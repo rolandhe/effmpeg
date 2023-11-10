@@ -4077,11 +4077,11 @@ static int get_input_packet_mt(InputFile *f, AVPacket **pkt)
 
 static void uninit_parent_context(ParsedOptionsContext *o){
 
-//    av_dict_free(&o->raw_context.swr_opts);
-//    av_dict_free(&o->raw_context.sws_dict);
-//    av_dict_free(&o->raw_context.format_opts);
-//    av_dict_free(&o->raw_context.codec_opts);
-//    av_dict_free(&o->raw_context.resample_opts);
+    av_dict_free(&o->raw_context.swr_opts);
+    av_dict_free(&o->raw_context.sws_dict);
+    av_dict_free(&o->raw_context.format_opts);
+    av_dict_free(&o->raw_context.codec_opts);
+    av_dict_free(&o->raw_context.resample_opts);
 
     uninit_opts((OptionsContext*)o);
     if(o->parse_context){

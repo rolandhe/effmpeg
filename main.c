@@ -62,14 +62,33 @@ char * get_data(char * src_file,int pipe_id){
     return data;
 }
 
-int main() {
-    init_ffmpeg();
-//    show_hwaccels();
-//    char * cmd = "ffmpeg -f s16le -i pp.pcm";
-//    char * cmd1 = "ffmpeg -i s95.mp3 mmm.aac";
-//    int ret = run_ffmpeg_cmd(cmd1);
-//    int64_t duration;
-//    int ret = quick_duration(cmd, &duration);
+void test_leak(int count){
+    char cmd[1024] = {0};
+    char trace_id[256]={0};
+    printf("to start............\n");
+    getchar();
+    for(int i = 0; i < count;i++){
+        sprintf(cmd,"ffmpeg -i s95.mp3 mmm_%d.aac",i);
+        sprintf(trace_id,"trace_id_index_%d",i);
+        int ret = run_ffmpeg_cmd(trace_id,cmd);
+        printf("ret:%d\n",ret);
+    }
+    printf("to end............\n");
+    getchar();
+}
+
+void run_once(){
+    char * cmd1 = "ffmpeg -i s95.mp3 mmm.aac";
+    int ret = run_ffmpeg_cmd("trace_99800m",cmd1);
+    printf("%d\n",ret);
+}
+
+void quick(){
+    char * cmd = "ffmpeg -f s16le -i pp.pcm";
+
+    int64_t duration;
+    int ret = quick_duration("trace_id-10999",cmd, &duration);
+    printf("%d\n",ret);
 //    if(ret == -101){
 //        printf("get incorrect duration,try to convert");
 //        ret = run_ffmpeg_cmd(cmd1);
@@ -77,12 +96,19 @@ int main() {
 //            ret = quick_duration(cmd,&duration);
 //        }
 //    }
+}
 
-//    char cmd[1024];
+int main() {
+    init_ffmpeg();
+//    test_leak(10000);
+//    show_hwaccels();
+//
 
-//    printf("please start\n");
-//    getchar();
+    run_once();
+    return 0;
+}
 
+void pip_trans(){
     int pip[] = {0,0};
     int ret = pipe(pip);
 
@@ -107,12 +133,5 @@ int main() {
     close(pip[1]);
     free(pipe_cmd);
     pthread_join(pthread, NULL);
-
-//    printf("%d\n",ret);
-//    printf("please end\n");
-//    getchar();
-//    printf("%ld\n",duration);
-    return 0;
 }
-
 

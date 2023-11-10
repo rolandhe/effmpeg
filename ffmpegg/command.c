@@ -1030,6 +1030,8 @@ int parse_cmd_options(char * cmd, ParsedOptionsContext *parent_context){
     argc = parse_command(recv,argv);
 
     ParseContext *p_opctx = malloc(sizeof(ParseContext));
+    memset(p_opctx, 0, sizeof(*p_opctx));
+    parent_context->parse_context = p_opctx;
 
     p_opctx->copy_cmd = recv;
 
@@ -1050,8 +1052,8 @@ int parse_cmd_options(char * cmd, ParsedOptionsContext *parent_context){
 
 fail:
     if (ret < 0) {
-        uninit_parse_context(p_opctx);
-        parent_context->parse_context = NULL;
+//        uninit_parse_context(p_opctx);
+//        parent_context->parse_context = NULL;
         av_strerror(ret, error, sizeof(error));
         av_log(NULL, AV_LOG_FATAL, "%s\n", error);
     }
@@ -1081,6 +1083,7 @@ void init_ffmpeg(){
 int run_ffmpeg_cmd(char * trace_id,char * cmd){
     int64_t start_time = get_timestamp();
     ParsedOptionsContext parent_context;
+    memset(&parent_context, 0, sizeof(ParsedOptionsContext));
     parent_context.raw_context.trace_id = trace_id;
     int ret = parse_cmd_options(cmd, &parent_context);
     av_log(NULL, AV_LOG_INFO, "tid=%s,parse_cmd_options ret:%d\n",trace_id, ret);
@@ -1117,6 +1120,7 @@ const char * used_ext[] = {".mp3",".aac"};
 int get_duration_next(char *trace_id,char *cmd,int next,int64_t * p_duration){
     * p_duration = -1;
     ParsedOptionsContext parent_context;
+    memset(&parent_context, 0, sizeof(ParsedOptionsContext));
     parent_context.raw_context.trace_id = trace_id;
     int ret = parse_cmd_options(cmd, &parent_context);
     av_log(NULL, AV_LOG_INFO, "tid=%s,parse_cmd_options ret:%d\n", trace_id,ret);

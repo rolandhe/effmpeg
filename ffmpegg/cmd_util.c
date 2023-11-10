@@ -334,11 +334,6 @@ void init_opts(OptionsContext *optionCtx) {
     av_dict_set(&optionCtx->run_context_ref->sws_dict, "flags", "bicubic", 0);
 }
 
-static void destroy_option_input(OptionInput *option_input){
-    // todo
-}
-
-
 void uninit_opts(OptionsContext *o) {
     const OptionDef *po = options;
     int i;
@@ -373,12 +368,6 @@ void uninit_opts(OptionsContext *o) {
 
 static int init_parse_context(ParseContext *octx,
                               ParsedOptionsContext  * parent_context) {
-    char * trace_id = parent_context->raw_context.trace_id;
-    memset(parent_context, 0, sizeof(*parent_context));
-    memset(octx, 0, sizeof(*octx));
-
-    parent_context->raw_context.trace_id = trace_id;
-
     int i;
 
     OptionsContext * o = (OptionsContext*)parent_context;
@@ -451,7 +440,7 @@ static int init_parse_context(ParseContext *octx,
     o->accurate_seek  = 1;
     o->thread_queue_size = -1;
 
-    parent_context->parse_context = octx;
+
     return 0;
 }
 
@@ -694,7 +683,7 @@ void uninit_parse_context(ParseContext *octx) {
     av_freep(&octx->cur_group.opts);
     av_freep(&octx->global_opts.opts);
     av_freep(&octx->global_opts.group_def);
-
+    free(octx);
 }
 
 void print_error(const char *filename, int err)
