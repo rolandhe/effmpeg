@@ -85,10 +85,11 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
     enum AVMediaType type = avfilter_pad_get_type(in->filter_ctx->input_pads, in->pad_idx);
     int i;
 
+    char * trace_id = run_context->trace_id;
     // TODO: support other filter types
     if (type != AVMEDIA_TYPE_VIDEO && type != AVMEDIA_TYPE_AUDIO) {
-        av_log(NULL, AV_LOG_FATAL, "Only video and audio filters supported "
-                                   "currently.\n");
+        av_log(NULL, AV_LOG_FATAL, "tid= %s,Only video and audio filters supported "
+                                   "currently.\n",trace_id);
 //        exit_program(1);
         return -1;
     }
@@ -100,8 +101,8 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
         int file_idx = strtol(in->name, &p, 0);
 
         if (file_idx < 0 || file_idx >= run_context->option_input.nb_input_files) {
-            av_log(NULL, AV_LOG_FATAL, "Invalid file index %d in filtergraph description %s.\n",
-                   file_idx, fg->graph_desc);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,Invalid file index %d in filtergraph description %s.\n",
+                   trace_id, file_idx, fg->graph_desc);
 //            exit_program(1);
             return -1;
         }
@@ -119,15 +120,15 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
             }
         }
         if (!st) {
-            av_log(NULL, AV_LOG_FATAL, "Stream specifier '%s' in filtergraph description %s "
-                                       "matches no streams.\n", p, fg->graph_desc);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,Stream specifier '%s' in filtergraph description %s "
+                                       "matches no streams.\n",trace_id, p, fg->graph_desc);
 //            exit_program(1);
             return -1;
         }
         ist = run_context->option_input.input_streams[run_context->option_input.input_files[file_idx]->ist_index + st->index];
         if (ist->user_set_discard == AVDISCARD_ALL) {
-            av_log(NULL, AV_LOG_FATAL, "Stream specifier '%s' in filtergraph description %s "
-                                       "matches a disabled input stream.\n", p, fg->graph_desc);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,Stream specifier '%s' in filtergraph description %s "
+                                       "matches a disabled input stream.\n", trace_id,p, fg->graph_desc);
 //            exit_program(1);
             return -1;
         }
@@ -141,8 +142,8 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
                 break;
         }
         if (i == run_context->option_input.nb_input_streams) {
-            av_log(NULL, AV_LOG_FATAL, "Cannot find a matching stream for "
-                                       "unlabeled input pad %d on filter %s\n", in->pad_idx,
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,Cannot find a matching stream for "
+                                       "unlabeled input pad %d on filter %s\n", trace_id,in->pad_idx,
                    in->filter_ctx->name);
 //            exit_program(1);
             return -1;
@@ -155,7 +156,7 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
     ist->st->discard = AVDISCARD_NONE;
 
     int has_err = 0;
-    GROW_ARRAY(fg->inputs, fg->nb_inputs,has_err);
+    GROW_ARRAY(trace_id,fg->inputs, fg->nb_inputs,has_err);
     if(has_err < 0){
         return  -1;
     }
@@ -181,7 +182,7 @@ static int init_input_filter(FilterGraph *fg, AVFilterInOut *in,RunContext *run_
     }
 
     has_err = 0;
-    GROW_ARRAY(ist->filters, ist->nb_filters,has_err);
+    GROW_ARRAY(trace_id,ist->filters, ist->nb_filters,has_err);
     if(has_err < 0){
         return  -1;
     }
@@ -215,7 +216,7 @@ int init_complex_filtergraph(RunContext *run_context,FilterGraph *fg)
 
     for (cur = outputs; cur;) {
         int has_err = 0;
-        GROW_ARRAY(fg->outputs, fg->nb_outputs,has_err);
+        GROW_ARRAY(run_context->trace_id,fg->outputs, fg->nb_outputs,has_err);
         if(has_err<0){
 //            exit_program(1);
             return -1;
@@ -260,7 +261,7 @@ int init_simple_filtergraph(RunContext *run_context,InputStream *ist, OutputStre
     fg->index = run_context->nb_filtergraphs;
 
     int has_err = 0;
-    GROW_ARRAY(fg->outputs, fg->nb_outputs,has_err);
+    GROW_ARRAY(run_context->trace_id,fg->outputs, fg->nb_outputs,has_err);
     ERR_QUICK_RETURN(has_err)
     if (!(fg->outputs[0] = av_mallocz(sizeof(*fg->outputs[0])))){
 //        exit_program(1);
@@ -272,7 +273,7 @@ int init_simple_filtergraph(RunContext *run_context,InputStream *ist, OutputStre
 
     ost->filter = fg->outputs[0];
 
-    GROW_ARRAY(fg->inputs, fg->nb_inputs,has_err);
+    GROW_ARRAY(run_context->trace_id,fg->inputs, fg->nb_inputs,has_err);
     ERR_QUICK_RETURN(has_err)
     if (!(fg->inputs[0] = av_mallocz(sizeof(*fg->inputs[0])))){
         //        exit_program(1);
@@ -288,11 +289,11 @@ int init_simple_filtergraph(RunContext *run_context,InputStream *ist, OutputStre
         return -1;
     }
 
-    GROW_ARRAY(ist->filters, ist->nb_filters,has_err);
+    GROW_ARRAY(run_context->trace_id,ist->filters, ist->nb_filters,has_err);
     ERR_QUICK_RETURN(has_err)
     ist->filters[ist->nb_filters - 1] = fg->inputs[0];
 
-    GROW_ARRAY(run_context->filtergraphs, run_context->nb_filtergraphs,has_err);
+    GROW_ARRAY(run_context->trace_id,run_context->filtergraphs, run_context->nb_filtergraphs,has_err);
     ERR_QUICK_RETURN(has_err)
     run_context->filtergraphs[run_context->nb_filtergraphs - 1] = fg;
 
@@ -307,6 +308,8 @@ static int sub2video_prepare(InputStream *ist, InputFilter *ifilter,RunContext *
 {
     AVFormatContext *avf = run_context->option_input.input_files[ist->file_index]->ctx;
     int i, w, h;
+
+    char * trace_id = run_context->trace_id;
 
     /* Compute the size of the canvas for the subtitles stream.
        If the subtitles codecpar has set a size, use it. Otherwise use the
@@ -324,7 +327,7 @@ static int sub2video_prepare(InputStream *ist, InputFilter *ifilter,RunContext *
             w = FFMAX(w, 720);
             h = FFMAX(h, 576);
         }
-        av_log(avf, AV_LOG_INFO, "sub2video: using %dx%d canvas\n", w, h);
+        av_log(avf, AV_LOG_INFO, "tid=%s,sub2video: using %dx%d canvas\n",trace_id, w, h);
     }
     ist->sub2video.w = ifilter->width  = w;
     ist->sub2video.h = ifilter->height = h;
@@ -372,7 +375,7 @@ static int insert_filter(AVFilterContext **last_filter, int *pad_idx,
     return 0;
 }
 
-static int insert_trim(int64_t start_time, int64_t duration,
+static int insert_trim(RunContext *run_context,int64_t start_time, int64_t duration,
                        AVFilterContext **last_filter, int *pad_idx,
                        const char *filter_name)
 {
@@ -388,8 +391,8 @@ static int insert_trim(int64_t start_time, int64_t duration,
 
     trim = avfilter_get_by_name(name);
     if (!trim) {
-        av_log(NULL, AV_LOG_ERROR, "%s filter not present, cannot limit "
-                                   "recording time.\n", name);
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,%s filter not present, cannot limit "
+                                   "recording time.\n", run_context->trace_id,name);
         return AVERROR_FILTER_NOT_FOUND;
     }
 
@@ -406,7 +409,7 @@ static int insert_trim(int64_t start_time, int64_t duration,
                              AV_OPT_SEARCH_CHILDREN);
     }
     if (ret < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error configuring the %s filter", name);
+        av_log(ctx, AV_LOG_ERROR, "tid=%s,Error configuring the %s filter", run_context->trace_id,name);
         return ret;
     }
 
@@ -445,8 +448,10 @@ static int configure_input_video_filter(FilterGraph *fg, InputFilter *ifilter,
     memset(par, 0, sizeof(*par));
     par->format = AV_PIX_FMT_NONE;
 
+    char * trace_id = run_context->trace_id;
+
     if (ist->dec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
-        av_log(NULL, AV_LOG_ERROR, "Cannot connect video filter to audio input\n");
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Cannot connect video filter to audio input\n",trace_id);
         ret = AVERROR(EINVAL);
         goto fail;
     }
@@ -486,7 +491,7 @@ static int configure_input_video_filter(FilterGraph *fg, InputFilter *ifilter,
     last_filter = ifilter->filter;
 
     if (ist->autorotate) {
-        double theta = get_rotation(ist->st);
+        double theta = get_rotation(trace_id,ist->st);
 
         if (fabs(theta - 90) < 1.0) {
             ret = insert_filter(&last_filter, &pad_idx, "transpose", "clock");
@@ -530,7 +535,7 @@ static int configure_input_video_filter(FilterGraph *fg, InputFilter *ifilter,
         if (!run_context->start_at_zero && f->ctx->start_time != AV_NOPTS_VALUE)
             tsoffset += f->ctx->start_time;
     }
-    ret = insert_trim(((f->start_time == AV_NOPTS_VALUE) || !f->accurate_seek) ?
+    ret = insert_trim(run_context,((f->start_time == AV_NOPTS_VALUE) || !f->accurate_seek) ?
                       AV_NOPTS_VALUE : tsoffset, f->recording_time,
                       &last_filter, &pad_idx, name);
     if (ret < 0)
@@ -557,8 +562,10 @@ static int configure_input_audio_filter(FilterGraph *fg, InputFilter *ifilter,
     int ret, pad_idx = 0;
     int64_t tsoffset = 0;
 
+    char * trace_id = run_context->trace_id;
+
     if (ist->dec_ctx->codec_type != AVMEDIA_TYPE_AUDIO) {
-        av_log(NULL, AV_LOG_ERROR, "Cannot connect audio filter to non audio input\n");
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Cannot connect audio filter to non audio input\n",trace_id);
         return AVERROR(EINVAL);
     }
 
@@ -585,7 +592,7 @@ static int configure_input_audio_filter(FilterGraph *fg, InputFilter *ifilter,
     AVFilterContext *filt_ctx;                                              \
                                                                             \
     av_log(NULL, AV_LOG_INFO, opt_name " is forwarded to lavfi "            \
-           "similarly to -af " filter_name "=%s.\n", arg);                  \
+           "similarly to -af " filter_name "=%s,tid=%s.\n", arg,trace_id);                  \
                                                                             \
     snprintf(name, sizeof(name), "graph_%d_%s_in_%d_%d",      \
                 fg->index, filter_name, ist->file_index, ist->st->index);   \
@@ -629,8 +636,8 @@ static int configure_input_audio_filter(FilterGraph *fg, InputFilter *ifilter,
     if (run_context->audio_volume != 256) {
         char args[256];
 
-        av_log(NULL, AV_LOG_WARNING, "-vol has been deprecated. Use the volume "
-                                     "audio filter instead.\n");
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,-vol has been deprecated. Use the volume "
+                                     "audio filter instead.\n",trace_id);
 
         snprintf(args, sizeof(args), "%f", run_context->audio_volume / 256.);
         AUTO_INSERT_FILTER_INPUT("-vol", "volume", args);
@@ -643,7 +650,7 @@ static int configure_input_audio_filter(FilterGraph *fg, InputFilter *ifilter,
         if (!run_context->start_at_zero && f->ctx->start_time != AV_NOPTS_VALUE)
             tsoffset += f->ctx->start_time;
     }
-    ret = insert_trim(((f->start_time == AV_NOPTS_VALUE) || !f->accurate_seek) ?
+    ret = insert_trim(run_context,((f->start_time == AV_NOPTS_VALUE) || !f->accurate_seek) ?
                       AV_NOPTS_VALUE : tsoffset, f->recording_time,
                       &last_filter, &pad_idx, name);
     if (ret < 0)
@@ -660,7 +667,7 @@ static int configure_input_filter(FilterGraph *fg, InputFilter *ifilter,
 {
     if (!ifilter->ist->dec) {
         av_log(NULL, AV_LOG_ERROR,
-               "No decoder for stream #%d:%d, filtering impossible\n",
+               "tid=%s,No decoder for stream #%d:%d, filtering impossible\n",run_context->trace_id,
                ifilter->ist->file_index, ifilter->ist->st->index);
         return AVERROR_DECODER_NOT_FOUND;
     }
@@ -702,7 +709,7 @@ static const enum AVPixelFormat *get_compliance_unofficial_pix_fmts(enum AVCodec
     }
 }
 
-static enum AVPixelFormat choose_pixel_fmt(AVStream *st, AVCodecContext *enc_ctx,
+static enum AVPixelFormat choose_pixel_fmt(RunContext *run_context,AVStream *st, AVCodecContext *enc_ctx,
                                            const AVCodec *codec, enum AVPixelFormat target)
 {
     if (codec && codec->pix_fmts) {
@@ -723,7 +730,8 @@ static enum AVPixelFormat choose_pixel_fmt(AVStream *st, AVCodecContext *enc_ctx
         if (*p == AV_PIX_FMT_NONE) {
             if (target != AV_PIX_FMT_NONE)
                 av_log(NULL, AV_LOG_WARNING,
-                       "Incompatible pixel format '%s' for codec '%s', auto-selecting format '%s'\n",
+                       "tid=%s,Incompatible pixel format '%s' for codec '%s', auto-selecting format '%s'\n",
+                       run_context->trace_id,
                        av_get_pix_fmt_name(target),
                        codec->name,
                        av_get_pix_fmt_name(best));
@@ -733,7 +741,7 @@ static enum AVPixelFormat choose_pixel_fmt(AVStream *st, AVCodecContext *enc_ctx
     return target;
 }
 
-static char *choose_pix_fmts(OutputFilter *ofilter,int *has_err)
+static char *choose_pix_fmts(RunContext *run_context,OutputFilter *ofilter,int *has_err)
 {
     OutputStream *ost = ofilter->ost;
     AVDictionaryEntry *strict_dict = av_dict_get(ost->encoder_opts, "strict", NULL, 0);
@@ -750,7 +758,7 @@ static char *choose_pix_fmts(OutputFilter *ofilter,int *has_err)
         return av_strdup(av_get_pix_fmt_name(ost->enc_ctx->pix_fmt));
     }
     if (ost->enc_ctx->pix_fmt != AV_PIX_FMT_NONE) {
-        return av_strdup(av_get_pix_fmt_name(choose_pixel_fmt(ost->st, ost->enc_ctx, ost->enc, ost->enc_ctx->pix_fmt)));
+        return av_strdup(av_get_pix_fmt_name(choose_pixel_fmt(run_context,ost->st, ost->enc_ctx, ost->enc, ost->enc_ctx->pix_fmt)));
     } else if (ost->enc && ost->enc->pix_fmts) {
         const enum AVPixelFormat *p;
         AVIOContext *s = NULL;
@@ -822,7 +830,7 @@ static int configure_output_video_filter(RunContext *run_context,FilterGraph *fg
         pad_idx = 0;
     }
     int has_err = 0;
-    if ((pix_fmts = choose_pix_fmts(ofilter,&has_err))) {
+    if ((pix_fmts = choose_pix_fmts(run_context,ofilter,&has_err))) {
         AVFilterContext *filter;
         snprintf(name, sizeof(name), "format_out_%d_%d",
                  ost->file_index, ost->index);
@@ -864,7 +872,7 @@ static int configure_output_video_filter(RunContext *run_context,FilterGraph *fg
 
     snprintf(name, sizeof(name), "trim_out_%d_%d",
              ost->file_index, ost->index);
-    ret = insert_trim(of->start_time, of->recording_time,
+    ret = insert_trim(run_context,of->start_time, of->recording_time,
                       &last_filter, &pad_idx, name);
     if (ret < 0)
         return ret;
@@ -889,6 +897,8 @@ static int configure_output_audio_filter(RunContext * run_context,FilterGraph *f
     char name[255];
     int ret;
 
+    char * trace_id = run_context->trace_id;
+
     snprintf(name, sizeof(name), "out_%d_%d", ost->file_index, ost->index);
     ret = avfilter_graph_create_filter(&ofilter->filter,
                                        avfilter_get_by_name("abuffersink"),
@@ -902,7 +912,7 @@ static int configure_output_audio_filter(RunContext * run_context,FilterGraph *f
     AVFilterContext *filt_ctx;                                              \
                                                                             \
     av_log(NULL, AV_LOG_INFO, opt_name " is forwarded to lavfi "            \
-           "similarly to -af " filter_name "=%s.\n", arg);                  \
+           "similarly to -af " filter_name "=%s, tid=%s.\n", arg,trace_id);                  \
                                                                             \
     ret = avfilter_graph_create_filter(&filt_ctx,                           \
                                        avfilter_get_by_name(filter_name),   \
@@ -1001,7 +1011,7 @@ static int configure_output_audio_filter(RunContext * run_context,FilterGraph *f
 
     snprintf(name, sizeof(name), "trim for output stream %d:%d",
              ost->file_index, ost->index);
-    ret = insert_trim(of->start_time, of->recording_time,
+    ret = insert_trim(run_context,of->start_time, of->recording_time,
                       &last_filter, &pad_idx, name);
     if (ret < 0)
         return ret;

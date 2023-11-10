@@ -1380,9 +1380,10 @@ static int parse_forced_key_frames(RunContext *run_context,char *kf, OutputStrea
         if (*p == ',')
             n++;
     size = n;
+    char * trace_id = run_context->trace_id;
     pts = av_malloc_array(size, sizeof(*pts));
     if (!pts) {
-        av_log(NULL, AV_LOG_FATAL, "Could not allocate forced key frames array.\n");
+        av_log(NULL, AV_LOG_FATAL, "tid=%s,Could not allocate forced key frames array.\n",trace_id);
 //        exit_program(1);
         return  -1;
     }
@@ -1403,12 +1404,12 @@ static int parse_forced_key_frames(RunContext *run_context,char *kf, OutputStrea
                 !(pts = av_realloc_f(pts, size += avf->nb_chapters - 1,
                                      sizeof(*pts)))) {
                 av_log(NULL, AV_LOG_FATAL,
-                       "Could not allocate forced key frames array.\n");
+                       "tid=%s,Could not allocate forced key frames array.\n",trace_id);
 //                exit_program(1);
                 return -1;
             }
             int has_err = 0;
-            t = p[8] ? parse_time_or_die("force_key_frames", p + 8, 1,&has_err) : 0;
+            t = p[8] ? parse_time_or_die(trace_id,"force_key_frames", p + 8, 1,&has_err) : 0;
             if(has_err < 0){
                 return -1;
             }
@@ -1423,7 +1424,7 @@ static int parse_forced_key_frames(RunContext *run_context,char *kf, OutputStrea
 
         } else {
             int has_err = 0;
-            t = parse_time_or_die("force_key_frames", p, 1,&has_err);
+            t = parse_time_or_die(trace_id,"force_key_frames", p, 1,&has_err);
             if(has_err < 0){
                 return -1;
             }
@@ -4088,18 +4089,12 @@ static void uninit_parent_context(ParsedOptionsContext *o){
         o->parse_context = NULL;
     }
 
-    SAFE_AV_FREE(o->raw_context.sdp_filename);
-    SAFE_AV_FREE(o->raw_context.videotoolbox_pixfmt);
+
 }
 
 void ffmpegg_cleanup(ParsedOptionsContext *parsed_ctx)
 {
     int i, j;
-
-//    if (do_benchmark) {
-//        int maxrss = getmaxrss() / 1024;
-//        av_log(NULL, AV_LOG_INFO, "bench: maxrss=%ikB\n", maxrss);
-//    }
 
     RunContext *run_context = &parsed_ctx->raw_context;
     for (i = 0; i < run_context->nb_filtergraphs; i++) {
@@ -4239,6 +4234,8 @@ void ffmpegg_cleanup(ParsedOptionsContext *parsed_ctx)
     av_freep(&run_context->option_input.input_files);
     av_freep(&run_context->option_output.output_streams);
     av_freep(&run_context->option_output.output_files);
+    SAFE_AV_FREE(&run_context->sdp_filename);
+    SAFE_AV_FREE(&run_context->videotoolbox_pixfmt);
 
 //    uninit_opts();
     uninit_parent_context(parsed_ctx);

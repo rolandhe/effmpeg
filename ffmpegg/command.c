@@ -36,6 +36,8 @@ static int opt_filter_complex_script(void *optctx, const char *opt, const char *
 static int opt_streamid(void *optctx, const char *opt, const char *arg);
 static int opt_timecode(void *optctx, const char *opt, const char *arg);
 
+static const char *const G_FRAME_RATES[] = { "25", "30000/1001", "24000/1001" };
+
 #define MATCH_PER_TYPE_OPT(name, type, outvar, fmtctx, mediatype)\
 {\
     int i;\
@@ -46,9 +48,9 @@ static int opt_timecode(void *optctx, const char *opt, const char *arg);
     }\
 }
 
-static int read_float_for_opt(const char *opt, const char *arg,float *target){
+static int read_float_for_opt(char * trace_id,const char *opt, const char *arg,float *target){
     int has_error = 0;
-    float value = parse_number_or_die(opt, arg, OPT_FLOAT, -INFINITY, INFINITY, &has_error);
+    float value = parse_number_or_die(trace_id,opt, arg, OPT_FLOAT, -INFINITY, INFINITY, &has_error);
     if(has_error < 0){
         return -1;
     }
@@ -56,9 +58,9 @@ static int read_float_for_opt(const char *opt, const char *arg,float *target){
     return  0;
 }
 
-static int read_int_for_opt(const char *opt, const char *arg,int *target){
+static int read_int_for_opt(char * trace_id,const char *opt, const char *arg,int *target){
     int has_error = 0;
-    int value = parse_number_or_die(opt, arg, OPT_INT64, 0, INT_MAX, &has_error);
+    int value = parse_number_or_die(trace_id,opt, arg, OPT_INT64, 0, INT_MAX, &has_error);
     if(has_error < 0){
         return -1;
     }
@@ -66,90 +68,7 @@ static int read_int_for_opt(const char *opt, const char *arg,int *target){
     return  0;
 }
 
-static int copy_ts_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->copy_ts);
-}
 
-static int frame_bits_per_raw_sample_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->frame_bits_per_raw_sample);
-}
-
-static int audio_volume_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->audio_volume);
-}
-
-static int start_at_zero_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->start_at_zero);
-}
-
-static int copy_tb_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->copy_tb);
-}
-
-static int filter_nbthreads_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->filter_nbthreads);
-}
-
-static int filter_complex_nbthreads_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->filter_complex_nbthreads);
-}
-
-static int copy_unknown_streams_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->copy_unknown_streams);
-}
-
-static int find_stream_info_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->find_stream_info);
-}
-static int intra_only_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->intra_only);
-}
-
-static int do_psnr_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->do_psnr);
-}
-
-static int input_sync_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->input_sync);
-}
-
-static int auto_conversion_filters_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->auto_conversion_filters);
-}
-
-static int frame_drop_threshold_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_float_for_opt(opt,arg,&o->run_context_ref->frame_drop_threshold);
-}
-
-static int audio_sync_method_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_int_for_opt(opt,arg,&o->run_context_ref->audio_sync_method);
-}
-
-static int audio_drift_threshold_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    return read_float_for_opt(opt,arg,&o->run_context_ref->audio_drift_threshold);
-}
-
-static int videotoolbox_pixfmt_func(void *optctx, const char *opt, const char *arg) {
-    OptionsContext *o = optctx;
-    o->run_context_ref->videotoolbox_pixfmt = av_strdup(arg);
-    return 0;
-}
 
 
 static int opt_bitrate(void *optctx, const char *opt, const char *arg)
@@ -160,7 +79,7 @@ static int opt_bitrate(void *optctx, const char *opt, const char *arg)
         av_dict_set(&o->g->codec_opts, "b:a", arg, 0);
         return 0;
     } else if(!strcmp(opt, "b")){
-        av_log(NULL, AV_LOG_WARNING, "Please use -b:a or -b:v, -b is ambiguous\n");
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,Please use -b:a or -b:v, -b is ambiguous\n",o->run_context_ref->trace_id);
         av_dict_set(&o->g->codec_opts, "b:v", arg, 0);
         return 0;
     }
@@ -178,7 +97,7 @@ static int opt_vsync(void *optctx, const char *opt, const char *arg)
 
     if (o->run_context_ref->video_sync_method == VSYNC_AUTO){
         int has_error = 0;
-        o->run_context_ref->video_sync_method = parse_number_or_die("vsync", arg, OPT_INT, VSYNC_AUTO, VSYNC_VFR, &has_error);
+        o->run_context_ref->video_sync_method = parse_number_or_die(o->run_context_ref->trace_id,"vsync", arg, OPT_INT, VSYNC_AUTO, VSYNC_VFR, &has_error);
         if(has_error < 0){
             return  - 1;
         }
@@ -605,22 +524,23 @@ static int opt_streamid(void *optctx, const char *opt, const char *arg)
     char *p;
     char idx_str[16];
 
+    char * trace_id =o->run_context_ref->trace_id;
     av_strlcpy(idx_str, arg, sizeof(idx_str));
     p = strchr(idx_str, ':');
     if (!p) {
         av_log(NULL, AV_LOG_FATAL,
-               "Invalid value '%s' for option '%s', required syntax is 'index:value'\n",
+               "tid=%s,Invalid value '%s' for option '%s', required syntax is 'index:value'\n",trace_id,
                arg, opt);
 //        exit_program(1);
         return -1;
     }
     *p++ = '\0';
     int has_error = 0;
-    idx = parse_number_or_die(opt, idx_str, OPT_INT, 0, MAX_STREAMS-1,&has_error);
+    idx = parse_number_or_die(trace_id,opt, idx_str, OPT_INT, 0, MAX_STREAMS-1,&has_error);
     if(has_error < 0){ return -1;}
-    o->streamid_map = grow_array(o->streamid_map, sizeof(*o->streamid_map), &o->nb_streamid_map, idx+1,&has_error);
+    o->streamid_map = grow_array(trace_id,o->streamid_map, sizeof(*o->streamid_map), &o->nb_streamid_map, idx+1,&has_error);
     if(has_error < 0){ return -1;}
-    o->streamid_map[idx] = parse_number_or_die(opt, p, OPT_INT, 0, INT_MAX,&has_error);
+    o->streamid_map[idx] = parse_number_or_die(trace_id,opt, p, OPT_INT, 0, INT_MAX,&has_error);
     if(has_error < 0){ return -1;}
     return 0;
 }
@@ -648,7 +568,9 @@ static int opt_filter_complex_script(void *optctx, const char *opt, const char *
     OptionsContext *o = optctx;
     int has_error = 0;
 
-    GROW_ARRAY(o->run_context_ref->filtergraphs, o->run_context_ref->nb_filtergraphs, has_error);
+    char * trace_id = o->run_context_ref->trace_id;
+
+    GROW_ARRAY(trace_id,o->run_context_ref->filtergraphs, o->run_context_ref->nb_filtergraphs, has_error);
     if (!(o->run_context_ref->filtergraphs[o->run_context_ref->nb_filtergraphs - 1] = av_mallocz(sizeof(*o->run_context_ref->filtergraphs[0]))))
         return AVERROR(ENOMEM);
     o->run_context_ref->filtergraphs[o->run_context_ref->nb_filtergraphs - 1]->index      = o->run_context_ref->nb_filtergraphs - 1;
@@ -663,7 +585,7 @@ static int opt_filter_complex(void *optctx, const char *opt, const char *arg)
 {
     OptionsContext *o = optctx;
     int has_error = 0;
-    GROW_ARRAY(o->run_context_ref->filtergraphs, o->run_context_ref->nb_filtergraphs, has_error);
+    GROW_ARRAY(o->run_context_ref->trace_id,o->run_context_ref->filtergraphs, o->run_context_ref->nb_filtergraphs, has_error);
     if(has_error < 0){
         return -1;
     }
@@ -686,15 +608,17 @@ static int opt_preset(void *optctx, const char *opt, const char *arg)
     char filename[1000], line[1000], tmp_line[1000];
     const char *codec_name = NULL;
 
+    char * trace_id = o->run_context_ref->trace_id;
+
     tmp_line[0] = *opt;
     tmp_line[1] = 0;
     MATCH_PER_TYPE_OPT(codec_names, str, codec_name, NULL, tmp_line);
 
     if (!(f = get_preset_file(filename, sizeof(filename), arg, *opt == 'f', codec_name))) {
         if(!strncmp(arg, "libx264-lossless", strlen("libx264-lossless"))){
-            av_log(NULL, AV_LOG_FATAL, "Please use -preset <speed> -qp 0\n");
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,Please use -preset <speed> -qp 0\n",trace_id);
         }else
-            av_log(NULL, AV_LOG_FATAL, "File for preset '%s' not found\n", arg);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,File for preset '%s' not found\n", arg,trace_id);
         goto fail;
     }
 
@@ -706,18 +630,18 @@ static int opt_preset(void *optctx, const char *opt, const char *arg)
         av_strlcpy(tmp_line, line, sizeof(tmp_line));
         if (!av_strtok(key,   "=",    &value) ||
             !av_strtok(value, "\r\n", &endptr)) {
-            av_log(NULL, AV_LOG_FATAL, "%s: Invalid syntax: '%s'\n", filename, line);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,%s: Invalid syntax: '%s'\n", trace_id,filename, line);
             goto fail;
         }
-        av_log(NULL, AV_LOG_DEBUG, "ffpreset[%s]: set '%s' = '%s'\n", filename, key, value);
+        av_log(NULL, AV_LOG_DEBUG, "tid=%s,ffpreset[%s]: set '%s' = '%s'\n",trace_id, filename, key, value);
 
         if      (!strcmp(key, "acodec")) opt_audio_codec   (o, key, value);
         else if (!strcmp(key, "vcodec")) opt_video_codec   (o, key, value);
         else if (!strcmp(key, "scodec")) opt_subtitle_codec(o, key, value);
         else if (!strcmp(key, "dcodec")) opt_data_codec    (o, key, value);
         else if (opt_default_new(o, key, value) < 0) {
-            av_log(NULL, AV_LOG_FATAL, "%s: Invalid option or argument: '%s', parsed as '%s' = '%s'\n",
-                   filename, line, key, value);
+            av_log(NULL, AV_LOG_FATAL, "tid=%s,%s: Invalid option or argument: '%s', parsed as '%s' = '%s'\n",
+                   trace_id,filename, line, key, value);
             goto fail;
         }
     }
@@ -761,18 +685,20 @@ static int opt_recording_timestamp(void *optctx, const char *opt, const char *ar
     OptionsContext *o = optctx;
     char buf[128];
     int has_error = 0;
-    int64_t recording_timestamp = parse_time_or_die(opt, arg, 0,&has_error) / 1E6;
+    char * trace_id = o->run_context_ref->trace_id;
+    int64_t recording_timestamp = parse_time_or_die(trace_id,opt, arg, 0,&has_error) / 1E6;
     if(has_error < 0){
         return -1;
     }
+
     struct tm time = *gmtime((time_t*)&recording_timestamp);
     if (!strftime(buf, sizeof(buf), "creation_time=%Y-%m-%dT%H:%M:%S%z", &time))
         return -1;
 
     parse_option(o, "metadata", buf, options);
 
-    av_log(NULL, AV_LOG_WARNING, "%s is deprecated, set the 'creation_time' metadata "
-                                 "tag instead.\n", opt);
+    av_log(NULL, AV_LOG_WARNING, "tid=%s,%s is deprecated, set the 'creation_time' metadata "
+                                 "tag instead.\n",trace_id, opt);
     return 0;
 }
 
@@ -813,7 +739,7 @@ static int opt_qscale(void *optctx, const char *opt, const char *arg)
     char *s;
     int ret;
     if(!strcmp(opt, "qscale")){
-        av_log(NULL, AV_LOG_WARNING, "Please use -q:a or -q:v, -qscale is ambiguous\n");
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,Please use -q:a or -q:v, -qscale is ambiguous\n",o->run_context_ref->trace_id);
         return parse_option(o, "q:v", arg, options);
     }
     s = av_asprintf("q%s", opt + 6);
@@ -826,13 +752,15 @@ static int opt_qscale(void *optctx, const char *opt, const char *arg)
 
 static int opt_video_channel(void *optctx, const char *opt, const char *arg)
 {
-    av_log(NULL, AV_LOG_WARNING, "This option is deprecated, use -channel.\n");
+    OptionsContext *o = optctx;
+    av_log(NULL, AV_LOG_WARNING, "tid=%s,This option is deprecated, use -channel.\n",o->run_context_ref->trace_id);
     return opt_default(optctx, "channel", arg);
 }
 
 static int opt_video_standard(void *optctx, const char *opt, const char *arg)
 {
-    av_log(NULL, AV_LOG_WARNING, "This option is deprecated, use -standard.\n");
+    OptionsContext *o = optctx;
+    av_log(NULL, AV_LOG_WARNING, "tid=%s,This option is deprecated, use -standard.\n",o->run_context_ref->trace_id);
     return opt_default(optctx, "standard", arg);
 }
 
@@ -884,9 +812,11 @@ static int opt_channel_layout(void *optctx, const char *opt, const char *arg)
     int ret, channels, ac_str_size;
     uint64_t layout;
 
+    char * trace_id = o->run_context_ref->trace_id;
+
     layout = av_get_channel_layout(arg);
     if (!layout) {
-        av_log(NULL, AV_LOG_ERROR, "Unknown channel layout: %s\n", arg);
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Unknown channel layout: %s\n",trace_id, arg);
         return AVERROR(EINVAL);
     }
     snprintf(layout_str, sizeof(layout_str), "%"PRIu64, layout);
@@ -921,8 +851,9 @@ static int opt_target(void *optctx, const char *opt, const char *arg)
 {
     OptionsContext *o = optctx;
     enum { PAL, NTSC, FILM, UNKNOWN } norm = UNKNOWN;
-    static const char *const frame_rates[] = { "25", "30000/1001", "24000/1001" };
+//    static const char *const frame_rates[] = { "25", "30000/1001", "24000/1001" };
 
+//    char ** frame_rates = o->run_context_ref->frame_rates;
     if (!strncmp(arg, "pal-", 4)) {
         norm = PAL;
         arg += 4;
@@ -966,13 +897,14 @@ static int opt_target(void *optctx, const char *opt, const char *arg)
         return AVERROR(EINVAL);
     }
 
+
     if (!strcmp(arg, "vcd")) {
         opt_video_codec(o, "c:v", "mpeg1video");
         opt_audio_codec(o, "c:a", "mp2");
         parse_option(o, "f", "vcd", options);
 
         parse_option(o, "s", norm == PAL ? "352x288" : "352x240", options);
-        parse_option(o, "r", frame_rates[norm], options);
+        parse_option(o, "r", G_FRAME_RATES[norm], options);
         opt_default(NULL, "g", norm == PAL ? "15" : "18");
 
         opt_default(NULL, "b:v", "1150000");
@@ -1000,7 +932,7 @@ static int opt_target(void *optctx, const char *opt, const char *arg)
         parse_option(o, "f", "svcd", options);
 
         parse_option(o, "s", norm == PAL ? "480x576" : "480x480", options);
-        parse_option(o, "r", frame_rates[norm], options);
+        parse_option(o, "r", G_FRAME_RATES[norm], options);
         parse_option(o, "pix_fmt", "yuv420p", options);
         opt_default(NULL, "g", norm == PAL ? "15" : "18");
 
@@ -1022,7 +954,7 @@ static int opt_target(void *optctx, const char *opt, const char *arg)
         parse_option(o, "f", "dvd", options);
 
         parse_option(o, "s", norm == PAL ? "720x576" : "720x480", options);
-        parse_option(o, "r", frame_rates[norm], options);
+        parse_option(o, "r", G_FRAME_RATES[norm], options);
         parse_option(o, "pix_fmt", "yuv420p", options);
         opt_default(NULL, "g", norm == PAL ? "15" : "18");
 
@@ -1044,7 +976,7 @@ static int opt_target(void *optctx, const char *opt, const char *arg)
         parse_option(o, "s", norm == PAL ? "720x576" : "720x480", options);
         parse_option(o, "pix_fmt", !strncmp(arg, "dv50", 4) ? "yuv422p" :
                                    norm == PAL ? "yuv420p" : "yuv411p", options);
-        parse_option(o, "r", frame_rates[norm], options);
+        parse_option(o, "r", G_FRAME_RATES[norm], options);
 
         parse_option(o, "ar", "48000", options);
         parse_option(o, "ac", "2", options);
@@ -1090,7 +1022,8 @@ int parse_cmd_options(char * cmd, ParsedOptionsContext *parent_context){
     int argc;
     char * argv[256];
 
-    char * recv = malloc(strlen(cmd) + 1);
+    int cmd_len = strlen(cmd);
+    char * recv = calloc(cmd_len + 1,1);
     strcpy(recv,cmd);
 
 
@@ -1145,18 +1078,19 @@ void init_ffmpeg(){
 #endif
 }
 
-int run_ffmpeg_cmd(char * cmd){
+int run_ffmpeg_cmd(char * trace_id,char * cmd){
     int64_t start_time = get_timestamp();
     ParsedOptionsContext parent_context;
+    parent_context.raw_context.trace_id = trace_id;
     int ret = parse_cmd_options(cmd, &parent_context);
-    printf("%d\n", ret);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,parse_cmd_options ret:%d\n",trace_id, ret);
     if (ret < 0) {
         ffmpegg_cleanup(&parent_context);
         return 0;
     }
 
     ret = open_stream(&parent_context);
-    printf("%d\n", ret);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,open_stream ret:%d\n", trace_id,ret);
 
     if(ret < 0){
         ffmpegg_cleanup(&parent_context);
@@ -1164,34 +1098,35 @@ int run_ffmpeg_cmd(char * cmd){
     }
 
     if (parent_context.raw_context.option_output.nb_output_files <= 0 && parent_context.raw_context.option_input.nb_input_files == 0) {
-        printf("参数错误\n");
+        av_log(NULL, AV_LOG_INFO, "tid=%s,参数错误\n",trace_id);
         ffmpegg_cleanup(&parent_context);
         return 0;
     }
 
 
     ret = transcode(&parent_context.raw_context);
-    printf("%d\n", ret);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,transcode ret:%d\n", trace_id,ret);
     ffmpegg_cleanup(&parent_context);
     int64_t end_time = get_timestamp();
-    printf("cost %ld ms\n",end_time - start_time);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,cost %ld ms\n",trace_id,end_time - start_time);
     return ret;
 }
 
 const char * used_ext[] = {".mp3",".aac"};
 
-int get_duration_next(char *cmd,int next,int64_t * p_duration){
+int get_duration_next(char *trace_id,char *cmd,int next,int64_t * p_duration){
     * p_duration = -1;
     ParsedOptionsContext parent_context;
+    parent_context.raw_context.trace_id = trace_id;
     int ret = parse_cmd_options(cmd, &parent_context);
-    printf("%d\n", ret);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,parse_cmd_options ret:%d\n", trace_id,ret);
     if (ret < 0) {
         ffmpegg_cleanup(&parent_context);
         return 0;
     }
 
     ret = open_stream(&parent_context);
-    printf("%d\n", ret);
+    av_log(NULL, AV_LOG_INFO, "tid=%s,open_stream ret:%d\n",trace_id, ret);
 
     if(ret < 0){
         ffmpegg_cleanup(&parent_context);
@@ -1217,7 +1152,7 @@ int get_duration_next(char *cmd,int next,int64_t * p_duration){
         sprintf(new_cmd,"%s %s%s",cmd,input_file,used_ext[use_idx]);
         ffmpegg_cleanup(&parent_context);
 
-        ret =  run_ffmpeg_cmd(new_cmd);
+        ret =  run_ffmpeg_cmd(parent_context.raw_context.trace_id,new_cmd);
         if(ret < 0){
             *ext = '.';
             return ret;
@@ -1225,7 +1160,7 @@ int get_duration_next(char *cmd,int next,int64_t * p_duration){
         memset(new_cmd,0,sizeof (new_cmd));
         sprintf(new_cmd,"ffmpeg -i %s%s",input_file,used_ext[use_idx]);
         *ext = '.';
-        return get_duration_next(new_cmd,1,p_duration);
+        return get_duration_next(trace_id,new_cmd,1,p_duration);
     }else {
         ffmpegg_cleanup(&parent_context);
     }
@@ -1234,6 +1169,6 @@ int get_duration_next(char *cmd,int next,int64_t * p_duration){
     return  ret;
 }
 
-int quick_duration(char *cmd, int64_t * p_duration){
-    return get_duration_next(cmd,0,p_duration);
+int quick_duration(char * trace_id,char *cmd, int64_t * p_duration){
+    return get_duration_next(trace_id,cmd,0,p_duration);
 }

@@ -18,8 +18,8 @@
     char name[16];\
     snprintf(name, sizeof(name), "0x%"PRIx64, ch_layout);
 
-#define GROW_ARRAY(array, nb_elems,has_error)\
-    array = grow_array(array, sizeof(*array), &nb_elems, nb_elems + 1,&has_error)
+#define GROW_ARRAY(trace_id,array, nb_elems,has_error)\
+    array = grow_array(trace_id,array, sizeof(*array), &nb_elems, nb_elems + 1,&has_error)
 
 #define TRIM(p) \
     while(*p) {     \
@@ -31,11 +31,11 @@
 
 int parse_option(void *optctx, const char *opt, const char *arg,
                  const OptionDef *options);
-void *grow_array(void *array, int elem_size, int *size, int new_size,int *has_error);
+void *grow_array(char *trace_id,void *array, int elem_size, int *size, int new_size,int *has_error);
 
-double parse_number_or_die(const char *context, const char *numstr, int type,
+double parse_number_or_die(char * trace_id,const char *context, const char *numstr, int type,
                            double min, double max,int *die);
-int64_t parse_time_or_die(const char *context, const char *timestr,
+int64_t parse_time_or_die(char * trace_id,const char *context, const char *timestr,
                           int is_duration,int *die);
 int opt_timelimit(void *optctx, const char *opt, const char *arg);
 
@@ -60,14 +60,14 @@ void remove_avoptions(AVDictionary **a, AVDictionary *b);
 int assert_avoptions(AVDictionary *m);
 int check_stream_specifier(AVFormatContext *s, AVStream *st, const char *spec);
 
-AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,AVDictionary *codec_opts,int *error);
+AVDictionary **setup_find_stream_info_opts(const char * trace_id,AVFormatContext *s,AVDictionary *codec_opts,int *error);
 AVDictionary *filter_codec_opts(AVDictionary *opts, enum AVCodecID codec_id,
                                 AVFormatContext *s, AVStream *st, const AVCodec *codec,int *error);
 
 FILE *get_preset_file(char *filename, size_t filename_size,
                       const char *preset_name, int is_path, const char *codec_name);
 
-double get_rotation(AVStream *st);
+double get_rotation(const char * trace_id,AVStream *st);
 
 
 

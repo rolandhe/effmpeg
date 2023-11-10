@@ -617,6 +617,10 @@ typedef struct RunContext {
     int nb_hw_devices;
     HWDevice **hw_devices;
     HWDevice *filter_hw_device;
+
+    char * trace_id;
+
+//    char * frame_rates[3];
 } RunContext;
 
 typedef struct OptionsContext {

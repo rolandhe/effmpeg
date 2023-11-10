@@ -16,8 +16,8 @@
 
 int show_hwaccels();
 void init_ffmpeg();
-int run_ffmpeg_cmd(char * cmd);
+int run_ffmpeg_cmd(char * trace_id,char * cmd);
 
-int quick_duration(char *cmd, int64_t * p_duration);
+int quick_duration(char * trace_id,char *cmd, int64_t * p_duration);
 
 #endif //EFFMPEGG_PARSE_CMD_H

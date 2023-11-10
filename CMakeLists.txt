@@ -11,5 +11,5 @@ include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
 
 
-add_executable(effmpeg main.c ${FFM_SRCS} ffmpegg/hw.h ffmpegg/hw.c)
+add_executable(effmpeg main.c ${FFM_SRCS})
 target_link_libraries(effmpeg avformat avdevice avcodec avutil avfilter swscale swresample m)

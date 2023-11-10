@@ -23,6 +23,8 @@ static const OptionGroupDef const_groups[] = {
         [GROUP_INFILE]  = { "input url",   "i",  OPT_INPUT },
 };
 
+
+
 static const OptionGroupDef global_group = { "global" };
 
 static const OptionDef *find_option(const OptionDef *po, const char *name) {
@@ -44,6 +46,10 @@ static int write_option(void *optctx, const OptionDef *po, const char *opt,
                 (uint8_t *) optctx + po->u.off : po->u.dst_ptr;
     int *dstcount;
 
+    OptionsContext * o = optctx;
+
+    char * trace_id = o->run_context_ref->trace_id;
+
     if (po->flags & OPT_SPEC) {
         SpecifierOpt **so = dst;
         char *p = strchr(opt, ':');
@@ -51,7 +57,7 @@ static int write_option(void *optctx, const OptionDef *po, const char *opt,
 
         dstcount = (int *) (so + 1);
         int has_error = 0;
-        *so = grow_array(*so, sizeof(**so), dstcount, *dstcount + 1, &has_error);
+        *so = grow_array(trace_id,*so, sizeof(**so), dstcount, *dstcount + 1, &has_error);
         if (has_error) {
             return AVERROR(ENOMEM);
         }
@@ -71,31 +77,31 @@ static int write_option(void *optctx, const OptionDef *po, const char *opt,
         *(char **) dst = str;
     } else if (po->flags & OPT_BOOL || po->flags & OPT_INT) {
         int die = 0;
-        *(int *) dst = parse_number_or_die(opt, arg, OPT_INT64, INT_MIN, INT_MAX, &die);
+        *(int *) dst = parse_number_or_die(trace_id,opt, arg, OPT_INT64, INT_MIN, INT_MAX, &die);
         if (die) {
             return AVERROR(ENOMEM);
         }
     } else if (po->flags & OPT_INT64) {
         int die = 0;
-        *(int64_t *) dst = parse_number_or_die(opt, arg, OPT_INT64, INT64_MIN, INT64_MAX, &die);
+        *(int64_t *) dst = parse_number_or_die(trace_id,opt, arg, OPT_INT64, INT64_MIN, INT64_MAX, &die);
         if (die) {
             return AVERROR(ENOMEM);
         }
     } else if (po->flags & OPT_TIME) {
         int die = 0;
-        *(int64_t *) dst = parse_time_or_die(opt, arg, 1, &die);
+        *(int64_t *) dst = parse_time_or_die(trace_id,opt, arg, 1, &die);
         if (die) {
             return AVERROR(ENOMEM);
         }
     } else if (po->flags & OPT_FLOAT) {
         int die = 0;
-        *(float *) dst = parse_number_or_die(opt, arg, OPT_FLOAT, -INFINITY, INFINITY, &die);
+        *(float *) dst = parse_number_or_die(trace_id,opt, arg, OPT_FLOAT, -INFINITY, INFINITY, &die);
         if (die) {
             return AVERROR(ENOMEM);
         }
     } else if (po->flags & OPT_DOUBLE) {
         int die = 0;
-        *(double *) dst = parse_number_or_die(opt, arg, OPT_DOUBLE, -INFINITY, INFINITY, &die);
+        *(double *) dst = parse_number_or_die(trace_id,opt, arg, OPT_DOUBLE, -INFINITY, INFINITY, &die);
         if (die) {
             return AVERROR(ENOMEM);
         }
@@ -103,12 +109,11 @@ static int write_option(void *optctx, const OptionDef *po, const char *opt,
         int ret = po->u.func_arg(optctx, opt, arg);
         if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR,
-                   "Failed to set value '%s' for option '%s': %s\n",
-                   arg, opt, av_err2str(ret));
+                   "tid=%s,Failed to set value '%s' for option '%s': %s\n",
+                   trace_id,arg, opt, av_err2str(ret));
             return ret;
         }
     }
-    // todo 没有搞明白这个是什么用的，以后再出来
 //    if (po->flags & OPT_EXIT)
 //        exit_program(0);
 
@@ -119,6 +124,8 @@ int parse_option(void *optctx, const char *opt, const char *arg,
                  const OptionDef *options) {
     const OptionDef *po;
     int ret;
+    OptionsContext *o = optctx;
+    char * trace_id = o->run_context_ref->trace_id;
 
     po = find_option(options, opt);
     if (!po->name && opt[0] == 'n' && opt[1] == 'o') {
@@ -132,11 +139,11 @@ int parse_option(void *optctx, const char *opt, const char *arg,
     if (!po->name)
         po = find_option(options, "default");
     if (!po->name) {
-        av_log(NULL, AV_LOG_ERROR, "Unrecognized option '%s'\n", opt);
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Unrecognized option '%s'\n", trace_id,opt);
         return AVERROR(EINVAL);
     }
     if (po->flags & HAS_ARG && !arg) {
-        av_log(NULL, AV_LOG_ERROR, "Missing argument for option '%s'\n", opt);
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Missing argument for option '%s'\n",trace_id, opt);
         return AVERROR(EINVAL);
     }
 
@@ -147,16 +154,16 @@ int parse_option(void *optctx, const char *opt, const char *arg,
     return !!(po->flags & HAS_ARG);
 }
 
-void *grow_array(void *array, int elem_size, int *size, int new_size, int *has_error) {
+void *grow_array(char *trace_id,void *array, int elem_size, int *size, int new_size, int *has_error) {
     if (new_size >= INT_MAX / elem_size) {
-        av_log(NULL, AV_LOG_ERROR, "Array too big.\n");
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Array too big.\n",trace_id);
         *has_error = 1;
         return NULL;
     }
     if (*size < new_size) {
         uint8_t *tmp = av_realloc_array(array, new_size, elem_size);
         if (!tmp) {
-            av_log(NULL, AV_LOG_ERROR, "Could not alloc buffer.\n");
+            av_log(NULL, AV_LOG_ERROR, "tid=%s,Could not alloc buffer.\n",trace_id);
             *has_error = 1;
             return NULL;
         }
@@ -167,34 +174,34 @@ void *grow_array(void *array, int elem_size, int *size, int new_size, int *has_e
     return array;
 }
 
-double parse_number_or_die(const char *context, const char *numstr, int type,
+double parse_number_or_die(char * trace_id,const char *context, const char *numstr, int type,
                            double min, double max, int *die) {
     char *tail;
     const char *error;
     double d = av_strtod(numstr, &tail);
     *die = 0;
     if (*tail)
-        error = "Expected number for %s but found: %s\n";
+        error = "tid=%s,Expected number for %s but found: %s\n";
     else if (d < min || d > max)
-        error = "The value for %s was %s which is not within %f - %f\n";
+        error = "tid=%s,The value for %s was %s which is not within %f - %f\n";
     else if (type == OPT_INT64 && (int64_t) d != d)
-        error = "Expected int64 for %s but found %s\n";
+        error = "tid=%s,Expected int64 for %s but found %s\n";
     else if (type == OPT_INT && (int) d != d)
-        error = "Expected int for %s but found %s\n";
+        error = "tid=%s,Expected int for %s but found %s\n";
     else
         return d;
-    av_log(NULL, AV_LOG_FATAL, error, context, numstr, min, max);
+    av_log(NULL, AV_LOG_FATAL, error,trace_id, context, numstr, min, max);
 
     *die = 1;
     return 0;
 }
 
-int64_t parse_time_or_die(const char *context, const char *timestr,
+int64_t parse_time_or_die(char * trace_id,const char *context, const char *timestr,
                           int is_duration, int *die) {
     int64_t us;
     *die = 0;
     if (av_parse_time(&us, timestr, is_duration) < 0) {
-        av_log(NULL, AV_LOG_FATAL, "Invalid %s specification for %s: %s\n",
+        av_log(NULL, AV_LOG_FATAL, "tid=%s,Invalid %s specification for %s: %s\n",trace_id,
                is_duration ? "duration" : "date", context, timestr);
         *die = 1;
         return -1;
@@ -203,9 +210,10 @@ int64_t parse_time_or_die(const char *context, const char *timestr,
 }
 
 int opt_timelimit(void *optctx, const char *opt, const char *arg) {
+    OptionsContext * o = optctx;
 #if HAVE_SETRLIMIT
     int die = 0;
-    int lim = parse_number_or_die(opt, arg, OPT_INT64, 0, INT_MAX, &die);
+    int lim = parse_number_or_die(o->run_context_ref->trace_id,opt, arg, OPT_INT64, 0, INT_MAX, &die);
     if (die) {
         return 0;
     }
@@ -213,7 +221,7 @@ int opt_timelimit(void *optctx, const char *opt, const char *arg) {
     if (setrlimit(RLIMIT_CPU, &rl))
         perror("setrlimit");
 #else
-    av_log(NULL, AV_LOG_WARNING, "-%s not implemented on this OS\n", opt);
+    av_log(NULL, AV_LOG_WARNING, "tid=%s,-%s not implemented on this OS\n", o->run_context_ref->trace_id,opt);
 #endif
     return 0;
 }
@@ -365,8 +373,11 @@ void uninit_opts(OptionsContext *o) {
 
 static int init_parse_context(ParseContext *octx,
                               ParsedOptionsContext  * parent_context) {
+    char * trace_id = parent_context->raw_context.trace_id;
     memset(parent_context, 0, sizeof(*parent_context));
     memset(octx, 0, sizeof(*octx));
+
+    parent_context->raw_context.trace_id = trace_id;
 
     int i;
 
@@ -425,6 +436,7 @@ static int init_parse_context(ParseContext *octx,
     parent_context->raw_context.transcode_init_done = ATOMIC_VAR_INIT(0);
 
     parent_context->raw_context.dup_warning = 1000;
+//    memcpy(parent_context->raw_context.frame_rates,G_FRAME_RATES,sizeof (G_FRAME_RATES));
 
 
     init_opts(parent_context);
@@ -443,13 +455,13 @@ static int init_parse_context(ParseContext *octx,
     return 0;
 }
 
-static int add_opt(ParseContext *octx, const OptionDef *opt,
+static int add_opt(char * trace_id,ParseContext *octx, const OptionDef *opt,
                    const char *key, const char *val) {
     int global = !(opt->flags & (OPT_PERFILE | OPT_SPEC | OPT_OFFSET));
     OptionGroup *g = global ? &octx->global_opts : &octx->cur_group;
 
     int has_error = 0;
-    GROW_ARRAY(g->opts, g->nb_opts, has_error);
+    GROW_ARRAY(trace_id,g->opts, g->nb_opts, has_error);
     if (has_error) {
         return -1;
     }
@@ -463,9 +475,10 @@ static int finish_group(ParseContext *octx, int group_idx,
                         const char *arg, OptionsContext *optionCtx) {
     OptionGroupList *l = &octx->groups[group_idx];
     OptionGroup *g;
+    char *trace_id = optionCtx->run_context_ref->trace_id;
 
     int has_error = 0;
-    GROW_ARRAY(l->groups, l->nb_groups, has_error);
+    GROW_ARRAY(trace_id,l->groups, l->nb_groups, has_error);
     if (has_error) {
         return -1;
     }
@@ -510,14 +523,15 @@ int split_commandline(ParseContext *octx, int argc, char *argv[],
     int dashdash = -2;
 
     init_parse_context(octx, optionCtx);
-    av_log(NULL, AV_LOG_DEBUG, "Splitting the commandline.\n");
+    av_log(NULL, AV_LOG_DEBUG, "tid=%s,Splitting the commandline.\n",optionCtx->raw_context.trace_id);
 
+    char * trace_id =  optionCtx->raw_context.trace_id;
     while (optindex < argc) {
         const char *opt = argv[optindex++], *arg;
         const OptionDef *po;
         int ret;
 
-        av_log(NULL, AV_LOG_DEBUG, "Reading option '%s' ...", opt);
+        av_log(NULL, AV_LOG_DEBUG, "tid=%s,Reading option '%s' ...", trace_id,opt);
 
         if (opt[0] == '-' && opt[1] == '-' && !opt[2]) {
             dashdash = optindex;
@@ -526,19 +540,19 @@ int split_commandline(ParseContext *octx, int argc, char *argv[],
         /* unnamed group separators, e.g. output filename */
         if (opt[0] != '-' || !opt[1] || dashdash + 1 == optindex) {
             if (finish_group(octx, 0, opt, optionCtx) != 0) {
-                av_log(NULL, AV_LOG_ERROR, "finish_group error for option '%s'.\n", opt);
+                av_log(NULL, AV_LOG_ERROR, "tid=%s,finish_group error for option '%s'.\n", trace_id,opt);
                 return AVERROR(EINVAL);
             }
-            av_log(NULL, AV_LOG_DEBUG, " matched as %s.\n", octx->groups[0].group_def->name);
+            av_log(NULL, AV_LOG_DEBUG, "tid=%s, matched as %s.\n",trace_id, octx->groups[0].group_def->name);
             continue;
         }
         opt++;
 
 #define GET_ARG(arg)                                                           \
 do {                                                                           \
-    arg = argv[optindex++];                                                    \
+    (arg) = argv[optindex++];                                                    \
     if (!arg) {                                                                \
-        av_log(NULL, AV_LOG_ERROR, "Missing argument for option '%s'.\n", opt);\
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Missing argument for option '%s'.\n",trace_id, opt);\
         return AVERROR(EINVAL);                                                \
     }                                                                          \
 } while (0)
@@ -547,11 +561,11 @@ do {                                                                           \
         if ((ret = match_group_separator(octx->groups, octx->nb_groups, opt)) >= 0) {
             GET_ARG(arg);
             if (0 != finish_group(octx, ret, arg, optionCtx)) {
-                av_log(NULL, AV_LOG_ERROR, "finish_group error for option '%s'.\n", opt);
+                av_log(NULL, AV_LOG_ERROR, "tid=%s,finish_group error for option '%s'.\n",trace_id, opt);
                 return AVERROR(EINVAL);
             }
-            av_log(NULL, AV_LOG_DEBUG, " matched as %s with argument '%s'.\n",
-                   octx->groups[ret].group_def->name, arg);
+            av_log(NULL, AV_LOG_DEBUG, "tid=%s, matched as %s with argument '%s'.\n",
+                   trace_id,octx->groups[ret].group_def->name, arg);
             continue;
         }
 
@@ -568,12 +582,12 @@ do {                                                                           \
                 arg = "1";
             }
 
-            if (0 != add_opt(octx, po, opt, arg)) {
-                av_log(NULL, AV_LOG_ERROR, "add_opt error for option '%s'.\n", opt);
+            if (0 != add_opt(trace_id,octx, po, opt, arg)) {
+                av_log(NULL, AV_LOG_ERROR, "tid=%s,add_opt error for option '%s'.\n",trace_id, opt);
                 return AVERROR(EINVAL);
             }
-            av_log(NULL, AV_LOG_DEBUG, " matched as option '%s' (%s) with "
-                                       "argument '%s'.\n", po->name, po->help, arg);
+            av_log(NULL, AV_LOG_DEBUG, "tid=%s, matched as option '%s' (%s) with "
+                                       "argument '%s'.\n", trace_id,po->name, po->help, arg);
             continue;
         }
 
@@ -581,13 +595,13 @@ do {                                                                           \
         if (argv[optindex]) {
             ret = opt_default(NULL, opt, argv[optindex]);
             if (ret >= 0) {
-                av_log(NULL, AV_LOG_DEBUG, " matched as AVOption '%s' with "
-                                           "argument '%s'.\n", opt, argv[optindex]);
+                av_log(NULL, AV_LOG_DEBUG, "tid=%s, matched as AVOption '%s' with "
+                                           "argument '%s'.\n",trace_id, opt, argv[optindex]);
                 optindex++;
                 continue;
             } else if (ret != AVERROR_OPTION_NOT_FOUND) {
-                av_log(NULL, AV_LOG_ERROR, "Error parsing option '%s' "
-                                           "with argument '%s'.\n", opt, argv[optindex]);
+                av_log(NULL, AV_LOG_ERROR, "tid=%s,Error parsing option '%s' "
+                                           "with argument '%s'.\n", trace_id,opt, argv[optindex]);
                 return ret;
             }
         }
@@ -596,26 +610,26 @@ do {                                                                           \
         if (opt[0] == 'n' && opt[1] == 'o' &&
             (po = find_option(options, opt + 2)) &&
             po->name && po->flags & OPT_BOOL) {
-            if (0 != add_opt(octx, po, opt, "0")) {
-                av_log(NULL, AV_LOG_ERROR, "add_opt error for option '%s'.\n", opt);
+            if (0 != add_opt(trace_id,octx, po, opt, "0")) {
+                av_log(NULL, AV_LOG_ERROR, "tid=%s,add_opt error for option '%s'.\n", trace_id,opt);
                 return AVERROR(EINVAL);
             }
-            av_log(NULL, AV_LOG_DEBUG, " matched as option '%s' (%s) with "
-                                       "argument 0.\n", po->name, po->help);
+            av_log(NULL, AV_LOG_DEBUG, "tid=%s, matched as option '%s' (%s) with "
+                                       "argument 0.\n",trace_id, po->name, po->help);
             continue;
         }
 
-        av_log(NULL, AV_LOG_ERROR, "Unrecognized option '%s'.\n", opt);
+        av_log(NULL, AV_LOG_ERROR, "tid=%s,Unrecognized option '%s'.\n", trace_id,opt);
         return AVERROR_OPTION_NOT_FOUND;
     }
 
     RunContext * run_context_ref = optionCtx->options_context.run_context_ref;
     if (octx->cur_group.nb_opts || run_context_ref->codec_opts || run_context_ref->format_opts ||
         run_context_ref->resample_opts)
-        av_log(NULL, AV_LOG_WARNING, "Trailing option(s) found in the "
-                                     "command: may be ignored.\n");
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,Trailing option(s) found in the "
+                                     "command: may be ignored.\n",trace_id);
 
-    av_log(NULL, AV_LOG_DEBUG, "Finished splitting the commandline.\n");
+    av_log(NULL, AV_LOG_DEBUG, "tid=%s,Finished splitting the commandline.\n",trace_id);
 
     return 0;
 }
@@ -623,31 +637,34 @@ do {                                                                           \
 int parse_optgroup(void *optctx, OptionGroup *g) {
     int i, ret;
 
-    av_log(NULL, AV_LOG_DEBUG, "Parsing a group of options: %s %s.\n",
-           g->group_def->name, g->arg);
+    OptionsContext *ctx = (OptionsContext *)optctx;
+    char * trace_id = ctx->run_context_ref->trace_id;
+
+    av_log(NULL, AV_LOG_DEBUG, "tid=%s,Parsing a group of options: %s %s.\n",
+           trace_id,g->group_def->name, g->arg);
 
     for (i = 0; i < g->nb_opts; i++) {
         Option *o = &g->opts[i];
 
         if (g->group_def->flags &&
             !(g->group_def->flags & o->opt->flags)) {
-            av_log(NULL, AV_LOG_ERROR, "Option %s (%s) cannot be applied to "
+            av_log(NULL, AV_LOG_ERROR, "tid=%s,Option %s (%s) cannot be applied to "
                                        "%s %s -- you are trying to apply an input option to an "
                                        "output file or vice versa. Move this option before the "
-                                       "file it belongs to.\n", o->key, o->opt->help,
+                                       "file it belongs to.\n", trace_id,o->key, o->opt->help,
                    g->group_def->name, g->arg);
             return AVERROR(EINVAL);
         }
 
-        av_log(NULL, AV_LOG_DEBUG, "Applying option %s (%s) with argument %s.\n",
-               o->key, o->opt->help, o->val);
+        av_log(NULL, AV_LOG_DEBUG, "tid=%s,Applying option %s (%s) with argument %s.\n",
+               trace_id, o->key, o->opt->help, o->val);
 
         ret = write_option(optctx, o->opt, o->key, o->val);
         if (ret < 0)
             return ret;
     }
 
-    av_log(NULL, AV_LOG_DEBUG, "Successfully parsed a group of options.\n");
+    av_log(NULL, AV_LOG_DEBUG, "tid=%s,Successfully parsed a group of options.\n",trace_id);
 
     return 0;
 }
@@ -716,7 +733,7 @@ int check_stream_specifier(AVFormatContext *s, AVStream *st, const char *spec)
     return ret;
 }
 
-AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,AVDictionary *codec_opts,int *error){
+AVDictionary **setup_find_stream_info_opts(const char * trace_id,AVFormatContext *s,AVDictionary *codec_opts,int *error){
     int i;
     AVDictionary **opts;
 
@@ -725,7 +742,7 @@ AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,AVDictionary *code
     opts = av_mallocz_array(s->nb_streams, sizeof(*opts));
     if (!opts) {
         av_log(NULL, AV_LOG_ERROR,
-               "Could not alloc memory for stream options.\n");
+               "tid=%s,Could not alloc memory for stream options.\n",trace_id);
         return NULL;
     }
     for (i = 0; i < s->nb_streams; i++)
@@ -845,7 +862,7 @@ FILE *get_preset_file(char *filename, size_t filename_size,
 
     return f;
 }
-double get_rotation(AVStream *st)
+double get_rotation(const char * trace_id,AVStream *st)
 {
     uint8_t* displaymatrix = av_stream_get_side_data(st,
                                                      AV_PKT_DATA_DISPLAYMATRIX, NULL);
@@ -856,10 +873,10 @@ double get_rotation(AVStream *st)
     theta -= 360*floor(theta/360 + 0.9/360);
 
     if (fabs(theta - 90*round(theta/90)) > 2)
-        av_log(NULL, AV_LOG_WARNING, "Odd rotation angle.\n"
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,Odd rotation angle.\n"
                                      "If you want to help, upload a sample "
                                      "of this file to https://streams.videolan.org/upload/ "
-                                     "and contact the ffmpeg-devel mailing list. (ffmpeg-devel@ffmpeg.org)");
+                                     "and contact the ffmpeg-devel mailing list. (ffmpeg-devel@ffmpeg.org)",trace_id);
 
     return theta;
 }

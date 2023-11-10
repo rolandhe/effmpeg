@@ -17,7 +17,7 @@ int64_t get_timestamp()
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-int guess_input_channel_layout(InputStream *ist)
+int guess_input_channel_layout(const char * trace_id,InputStream *ist)
 {
     AVCodecContext *dec = ist->dec_ctx;
 
@@ -31,8 +31,8 @@ int guess_input_channel_layout(InputStream *ist)
             return 0;
         av_get_channel_layout_string(layout_name, sizeof(layout_name),
                                      dec->channels, dec->channel_layout);
-        av_log(NULL, AV_LOG_WARNING, "Guessed Channel Layout for Input Stream "
-                                     "#%d.%d : %s\n", ist->file_index, ist->st->index, layout_name);
+        av_log(NULL, AV_LOG_WARNING, "tid=%s,Guessed Channel Layout for Input Stream "
+                                     "#%d.%d : %s\n", trace_id,ist->file_index, ist->st->index, layout_name);
     }
     return 1;
 }

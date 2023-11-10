@@ -197,12 +197,12 @@ int hw_device_init_from_string(RunContext *run_context,const char *arg, HWDevice
     return err;
     invalid:
     av_log(NULL, AV_LOG_ERROR,
-           "Invalid device specification \"%s\": %s\n", arg, errmsg);
+           "tid=%s,Invalid device specification \"%s\": %s\n",run_context->trace_id, arg, errmsg);
     err = AVERROR(EINVAL);
     goto done;
     fail:
     av_log(NULL, AV_LOG_ERROR,
-           "Device creation failed: %d.\n", err);
+           "tid=%s,Device creation failed: %d.\n", run_context->trace_id,err);
     av_buffer_unref(&device_ref);
     goto done;
 }
@@ -225,7 +225,7 @@ static int hw_device_init_from_type(RunContext *run_context,enum AVHWDeviceType 
     err = av_hwdevice_ctx_create(&device_ref, type, device, NULL, 0);
     if (err < 0) {
         av_log(NULL, AV_LOG_ERROR,
-               "Device creation failed: %d.\n", err);
+               "tid=%s,Device creation failed: %d.\n", run_context->trace_id,err);
         goto fail;
     }
 
@@ -292,9 +292,9 @@ int hw_device_setup_for_decode(RunContext *run_context,InputStream *ist)
             if (ist->hwaccel_id == HWACCEL_AUTO) {
                 ist->hwaccel_device_type = dev->type;
             } else if (ist->hwaccel_device_type != dev->type) {
-                av_log(ist->dec_ctx, AV_LOG_ERROR, "Invalid hwaccel device "
+                av_log(ist->dec_ctx, AV_LOG_ERROR, "tid=%s,Invalid hwaccel device "
                                                    "specified for decoder: device %s of type %s is not "
-                                                   "usable with hwaccel %s.\n", dev->name,
+                                                   "usable with hwaccel %s.\n", run_context->trace_id,dev->name,
                        av_hwdevice_get_type_name(dev->type),
                        av_hwdevice_get_type_name(ist->hwaccel_device_type));
                 return AVERROR(EINVAL);
@@ -331,8 +331,9 @@ int hw_device_setup_for_decode(RunContext *run_context,InputStream *ist)
             type = config->device_type;
             dev = hw_device_get_by_type(run_context,type);
             if (dev) {
-                av_log(ist->dec_ctx, AV_LOG_INFO, "Using auto "
+                av_log(ist->dec_ctx, AV_LOG_INFO, "tid=%s,Using auto "
                                                   "hwaccel type %s with existing device %s.\n",
+                       run_context->trace_id,
                        av_hwdevice_get_type_name(type), dev->name);
             }
         }
@@ -349,29 +350,31 @@ int hw_device_setup_for_decode(RunContext *run_context,InputStream *ist)
                 continue;
             }
             if (ist->hwaccel_device) {
-                av_log(ist->dec_ctx, AV_LOG_INFO, "Using auto "
+                av_log(ist->dec_ctx, AV_LOG_INFO, "tid=%s,Using auto "
                                                   "hwaccel type %s with new device created "
-                                                  "from %s.\n", av_hwdevice_get_type_name(type),
+                                                  "from %s.\n",run_context->trace_id, av_hwdevice_get_type_name(type),
                        ist->hwaccel_device);
             } else {
-                av_log(ist->dec_ctx, AV_LOG_INFO, "Using auto "
+                av_log(ist->dec_ctx, AV_LOG_INFO, "tid=%s,Using auto "
                                                   "hwaccel type %s with new default device.\n",
+                       run_context->trace_id,
                        av_hwdevice_get_type_name(type));
             }
         }
         if (dev) {
             ist->hwaccel_device_type = type;
         } else {
-            av_log(ist->dec_ctx, AV_LOG_INFO, "Auto hwaccel "
-                                              "disabled: no device found.\n");
+            av_log(ist->dec_ctx, AV_LOG_INFO, "tid=%s,Auto hwaccel "
+                                              "disabled: no device found.\n",run_context->trace_id);
             ist->hwaccel_id = HWACCEL_NONE;
             return 0;
         }
     }
 
     if (!dev) {
-        av_log(ist->dec_ctx, AV_LOG_ERROR, "No device available "
+        av_log(ist->dec_ctx, AV_LOG_ERROR, "tid=%s,No device available "
                                            "for decoder: device type %s needed for codec %s.\n",
+               run_context->trace_id,
                av_hwdevice_get_type_name(type), ist->dec->name);
         return err;
     }
@@ -410,8 +413,9 @@ int hw_device_setup_for_encode(RunContext *run_context,OutputStream *ost)
             config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_FRAMES_CTX &&
             (config->pix_fmt == AV_PIX_FMT_NONE ||
              config->pix_fmt == ost->enc_ctx->pix_fmt)) {
-            av_log(ost->enc_ctx, AV_LOG_VERBOSE, "Using input "
+            av_log(ost->enc_ctx, AV_LOG_VERBOSE, "tid=%s,Using input "
                                                  "frames context (format %s) with %s encoder.\n",
+                   run_context->trace_id,
                    av_get_pix_fmt_name(ost->enc_ctx->pix_fmt),
                    ost->enc->name);
             ost->enc_ctx->hw_frames_ctx = av_buffer_ref(frames_ref);
@@ -426,8 +430,10 @@ int hw_device_setup_for_encode(RunContext *run_context,OutputStream *ost)
     }
 
     if (dev) {
-        av_log(ost->enc_ctx, AV_LOG_VERBOSE, "Using device %s "
-                                             "(type %s) with %s encoder.\n", dev->name,
+        av_log(ost->enc_ctx, AV_LOG_VERBOSE, "tid=%s,Using device %s "
+                                             "(type %s) with %s encoder.\n",
+               run_context->trace_id,
+               dev->name,
                av_hwdevice_get_type_name(dev->type), ost->enc->name);
         ost->enc_ctx->hw_device_ctx = av_buffer_ref(dev->device_ref);
         if (!ost->enc_ctx->hw_device_ctx)
