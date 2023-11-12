@@ -85,7 +85,8 @@ void run_once(){
 }
 
 void quick(){
-    char * cmd = "ffmpeg -f s16le -i pp.pcm";
+    // -f s16le -i
+    char * cmd = "ffmpeg -i out.aac";
 
     int64_t duration;
     int ret = quick_duration("trace_id-10999",cmd, &duration);
@@ -102,12 +103,13 @@ void pip_trans();
 
 int main() {
     init_ffmpeg();
+    quick();
 //    test_leak(10000);
 //    show_hwaccels();
 //
 
 //    run_once();
-    pip_trans();
+//    pip_trans();
     return 0;
 }
 
