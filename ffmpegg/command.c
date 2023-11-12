@@ -1407,6 +1407,7 @@ int calc(const char * filename,AVInputFormat *inputFormat,int64_t * p_duration) 
     AVFormatContext *formatContext = avformat_alloc_context();
     int ret = avformat_open_input(&formatContext, filename, inputFormat, NULL);
     if (ret < 0) {
+        avformat_free_context(&formatContext);
         return -1;
     }
 
@@ -1453,7 +1454,7 @@ int calc(const char * filename,AVInputFormat *inputFormat,int64_t * p_duration) 
         av_packet_unref(packet);
     }
 
-    av_packet_free(packet);
+    av_packet_free(&packet);
     *p_duration = (int64_t)(totalDuration * base_val * 100000);
     // 关闭输入文件
     avformat_close_input(&formatContext);
@@ -1509,6 +1510,7 @@ int quick_duration(char *trace_id, char *cmd, int64_t *p_duration) {
         ffmpegg_cleanup(&parent_context);
         ret = calc(input_file,inputFormat,p_duration);
         av_freep(&input_file);
+
     } else{
         ffmpegg_cleanup(&parent_context);
     }

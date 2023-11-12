@@ -90,7 +90,7 @@ void quick(){
 
     int64_t duration;
     int ret = quick_duration("trace_id-10999",cmd, &duration);
-    printf("%d\n",ret);
+    printf("ret:%d,%ld\n",ret,duration);
 //    if(ret == -101){
 //        printf("get incorrect duration,try to convert");
 //        ret = run_ffmpeg_cmd(cmd1);
