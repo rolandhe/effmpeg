@@ -1400,7 +1400,7 @@ int run_ffmpeg_cmd(char *trace_id, char *cmd) {
     return ret;
 }
 
-const char *used_ext[] = {".mp3", ".aac"};
+
 
 
 int calc(const char * filename,AVInputFormat *inputFormat,int64_t * p_duration) {
