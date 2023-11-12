@@ -5,10 +5,7 @@
 #ifndef EFFMPEGG_PARSE_CMD_H
 #define EFFMPEGG_PARSE_CMD_H
 
-#include <libavutil/opt.h>
-#include <libavutil/dict.h>
-#include "cmd_options.h"
-#include "cmd_util.h"
+#include <stdint.h>
 
 
 

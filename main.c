@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "ffmpegg/command.h"
 #include "ffmpegg/base64.h"
+#include <libavutil/opt.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/wait.h>
@@ -50,7 +51,7 @@ char * get_data(char * src_file,int pipe_id){
     fclose(f);
     int b_len = Base64encode_len(len);
 
-    char * pro = "ffmpeg -i data:content/type;base64,";
+    char * pro = "ffmpeg -f mp3 -i data:content/type;base64,";
     int pro_len = strlen(pro);
     int data_len = b_len + pro_len + out_len ;
     char * data = malloc(data_len);
@@ -97,6 +98,7 @@ void quick(){
 //        }
 //    }
 }
+void pip_trans();
 
 int main() {
     init_ffmpeg();
@@ -104,7 +106,8 @@ int main() {
 //    show_hwaccels();
 //
 
-    run_once();
+//    run_once();
+    pip_trans();
     return 0;
 }
 
