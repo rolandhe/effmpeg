@@ -216,7 +216,7 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
     char cmd[2048] = {0};
 
     void * pi = &memInput;
-    int64_t ii_value = pi;
+    int64_t ii_value = (int64_t) pi;
 
     sprintf(cmd,fmt,ii_value,(int64_t)&memOut);
 
