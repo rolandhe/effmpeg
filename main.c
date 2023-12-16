@@ -90,7 +90,7 @@ void quick(){
 
     int64_t duration;
     int ret = quick_duration("trace_id-10999",cmd, &duration);
-    printf("ret:%d,%ld\n",ret,duration);
+    printf("%d\n",ret);
 //    if(ret == -101){
 //        printf("get incorrect duration,try to convert");
 //        ret = run_ffmpeg_cmd(cmd1);
@@ -99,11 +99,46 @@ void quick(){
 //        }
 //    }
 }
+
+
+
 void pip_trans();
+int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *output_len);
+
+void extractWebm(){
+
+    char * src_file = "/Users/hexiufeng/Downloads/webm/recorder.webm";
+    FILE * f = fopen(src_file,"rb");
+    fseek(f,0,SEEK_END);
+    int size = ftell(f);
+
+    char * buffer = malloc(size);
+    fseek(f,0,SEEK_SET);
+    int n = fread(buffer,1,size,f);
+    fclose(f);
+
+    char * output = NULL;
+    int out_len = 0;
+    int ret = extractAudioFromWebm(buffer,n,&output,&out_len);
+
+    char * dest_file = "/Users/hexiufeng/Downloads/webm/last-be.opus";
+
+
+    if(output){
+        FILE * out = fopen(dest_file,"wb");
+        fwrite(output,1,out_len,out);
+        fclose(out);
+        free(output);
+    }
+
+    printf("ret:%d\n",ret);
+
+}
 
 int main() {
     init_ffmpeg();
-    quick();
+    extractWebm();
+//    quick();
 //    test_leak(10000);
 //    show_hwaccels();
 //
@@ -140,3 +175,86 @@ void pip_trans(){
     pthread_join(pthread, NULL);
 }
 
+
+typedef struct {
+    char *data;
+    int size;
+} MemBuffer;
+
+int resample16k(char * input,int input_len,int *out_len){
+    if(input_len % 6 != 0) {
+        return -1;
+    }
+    int16_t * in = (int16_t*)input;
+    int all_size = input_len / 2;
+    int index = 0;
+    for (int i = 0;i < all_size;i += 3){
+        in[index++] = in[i];
+    }
+    *out_len = index * 2;
+    return 0;
+}
+
+
+int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *output_len){
+    const char * fmt = "ffmpeg -f webm -i filemem:0x%lx -vn -f s16be filemem:0x%lx.pcm";
+//    const char * fmt = "ffmpeg -i filemem:0x%lx -vn -f s16le /Users/hexiufeng/Downloads/webm/xxoo.pcm";
+//    const char * fmt = "ffmpeg -i /Users/hexiufeng/Downloads/webm/recorder.webm -vn -f s16le /Users/hexiufeng/Downloads/webm/xxoo.pcm";
+    MemBuffer memInput = {
+            .data = input,
+            .size = input_len,
+    };
+
+    MemBuffer memOut = {
+            .data = NULL,
+            .size = 0,
+    };
+
+    *output = NULL;
+    *output_len = 0;
+
+    char cmd[2048] = {0};
+
+    void * pi = &memInput;
+    int64_t ii_value = pi;
+
+    sprintf(cmd,fmt,ii_value,(int64_t)&memOut);
+
+    int ret = run_ffmpeg_cmd("extract-trace-1000",cmd);
+    if(ret != 0){
+        if(memOut.data){
+            free(memOut.data);
+        }
+        return ret;
+    }
+
+    ret = resample16k(memOut.data,memOut.size,&memOut.size);
+    if(ret != 0){
+        if(memOut.data){
+            free(memOut.data);
+        }
+        return ret;
+    }
+
+    memInput.data = memOut.data;
+    memInput.size = memOut.size;
+
+    memOut.data = NULL;
+    memOut.size = 0;
+    const char * opus_format = "ffmpeg -f s16be -ar 16000 -i filemem:0x%lx -c:a libopus -ar 16000 -frame_duration 20 filemem:0x%lx.opus";
+    sprintf(cmd,opus_format,ii_value,(int64_t)&memOut);
+
+    ret = run_ffmpeg_cmd("extract-trace-1000",cmd);
+    free(memInput.data);
+    if(ret != 0){
+        if(memOut.data){
+            free(memOut.data);
+        }
+        return ret;
+    }
+
+    *output = memOut.data;
+    *output_len = memOut.size;
+
+    return 0;
+}
