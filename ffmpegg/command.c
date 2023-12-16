@@ -1455,7 +1455,7 @@ int calc(const char * filename,AVInputFormat *inputFormat,int64_t * p_duration) 
     }
 
     av_packet_free(&packet);
-    *p_duration = (int64_t)(totalDuration * base_val * 100000);
+    *p_duration = (int64_t)(totalDuration * base_val * 1000000);
     // 关闭输入文件
     avformat_close_input(&formatContext);
     return  0;

@@ -86,7 +86,7 @@ void run_once(){
 
 void quick(){
     // -f s16le -i
-    char * cmd = "ffmpeg -i out.aac";
+    char * cmd = "ffmpeg -i /home/xiufeng/github/effmpeg/vvx.m4a";
 
     int64_t duration;
     int ret = quick_duration("trace_id-10999",cmd, &duration);
