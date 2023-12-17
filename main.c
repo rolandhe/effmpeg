@@ -107,7 +107,7 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
 
 void extractWebm(){
 
-    char * src_file = "/Users/hexiufeng/Downloads/webm/recorder.webm";
+    char * src_file = "/home/xiufeng/github/effmpeg/vvx.m4a";
     FILE * f = fopen(src_file,"rb");
     fseek(f,0,SEEK_END);
     int size = ftell(f);
