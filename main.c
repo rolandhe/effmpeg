@@ -86,7 +86,7 @@ void run_once(){
 
 void quick(){
     // -f s16le -i
-    char * cmd = "ffmpeg -i out.aac";
+    char * cmd = "ffmpeg -i /home/xiufeng/github/effmpeg/vvx.m4a";
 
     int64_t duration;
     int ret = quick_duration("trace_id-10999",cmd, &duration);
@@ -107,7 +107,7 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
 
 void extractWebm(){
 
-    char * src_file = "/Users/hexiufeng/Downloads/webm/recorder.webm";
+    char * src_file = "/home/xiufeng/github/effmpeg/recorder.webm";
     FILE * f = fopen(src_file,"rb");
     fseek(f,0,SEEK_END);
     int size = ftell(f);
@@ -121,7 +121,7 @@ void extractWebm(){
     int out_len = 0;
     int ret = extractAudioFromWebm(buffer,n,&output,&out_len);
 
-    char * dest_file = "/Users/hexiufeng/Downloads/webm/last-be.opus";
+    char * dest_file = "/home/xiufeng/github/effmpeg/last.opus";
 
 
     if(output){
@@ -197,7 +197,7 @@ int resample16k(char * input,int input_len,int *out_len){
 
 
 int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *output_len){
-    const char * fmt = "ffmpeg -f webm -i filemem:0x%lx -vn -f s16be filemem:0x%lx.pcm";
+    const char * fmt = "ffmpeg -f webm -i filemem:0x%lx -vn -f s16le filemem:0x%lx.pcm";
 //    const char * fmt = "ffmpeg -i filemem:0x%lx -vn -f s16le /Users/hexiufeng/Downloads/webm/xxoo.pcm";
 //    const char * fmt = "ffmpeg -i /Users/hexiufeng/Downloads/webm/recorder.webm -vn -f s16le /Users/hexiufeng/Downloads/webm/xxoo.pcm";
     MemBuffer memInput = {
@@ -216,7 +216,7 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
     char cmd[2048] = {0};
 
     void * pi = &memInput;
-    int64_t ii_value = pi;
+    int64_t ii_value = (int64_t) pi;
 
     sprintf(cmd,fmt,ii_value,(int64_t)&memOut);
 
@@ -241,7 +241,7 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
 
     memOut.data = NULL;
     memOut.size = 0;
-    const char * opus_format = "ffmpeg -f s16be -ar 16000 -i filemem:0x%lx -c:a libopus -ar 16000 -frame_duration 20 filemem:0x%lx.opus";
+    const char * opus_format = "ffmpeg -f s16le -ar 16000 -i filemem:0x%lx -c:a libopus -ar 16000 -frame_duration 20 filemem:0x%lx.opus";
     sprintf(cmd,opus_format,ii_value,(int64_t)&memOut);
 
     ret = run_ffmpeg_cmd("extract-trace-1000",cmd);
