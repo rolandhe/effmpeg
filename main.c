@@ -33,7 +33,32 @@ void * read_data(void * param){
 
         fwrite(buf,1,ssize,out);
     }
+    close(p->pipe_id);
+}
 
+void * write_data(void * param){
+    Param *p = (Param*)param;
+    FILE * f = fopen(p->file_name,"rb");
+    char buf[8196];
+    int read_count = 0;
+    while (1){
+
+        int ssize = fread(buf,1,8196,f);
+        read_count += ssize;
+        av_log(NULL,AV_LOG_INFO,"read %d data,all %d\n",ssize,read_count);
+        if(ssize == 0){
+            fclose(f);
+            break;
+        }
+        if(ssize < 0){
+            fclose(f);
+            av_log(NULL,AV_LOG_INFO,"met error\n");
+            break;
+        }
+
+        write(p->pipe_id,buf,ssize);
+    }
+    close(p->pipe_id);
 }
 
 char * get_data(char * src_file,int pipe_id){
@@ -121,7 +146,7 @@ void extractWebm(){
     int out_len = 0;
     int ret = extractAudioFromWebm(buffer,n,&output,&out_len);
 
-    char * dest_file = "/home/xiufeng/github/effmpeg/last.opus";
+    char * dest_file = "/home/xiufeng/github/effmpeg/last.pcm";
 
 
     if(output){
@@ -137,18 +162,52 @@ void extractWebm(){
 
 int main() {
     init_ffmpeg();
-    extractWebm();
+//    extractWebm();
 //    quick();
 //    test_leak(10000);
 //    show_hwaccels();
 //
 
 //    run_once();
-//    pip_trans();
+    pip_trans();
     return 0;
 }
 
 void pip_trans(){
+    int pip[] = {0,0};
+    int ret = pipe2(pip);
+
+
+    char cmd[2048] = {0};
+    Param param;
+    param.pipe_id = pip[1];
+    param.file_name = "/home/xiufeng/Downloads/ion.ogg";
+    pthread_t pthread;
+    pthread_create(&pthread, NULL, write_data, &param);
+//    memset(cmd,0,sizeof (cmd));
+
+    int pip_out[] = {0,0};
+    ret = pipe(pip_out);
+    Param param_read;
+    param_read.pipe_id = pip_out[0];
+    param_read.file_name = "/home/xiufeng/github/effmpeg/ion.pcm";
+    pthread_t pthread_read;
+    pthread_create(&pthread_read, NULL, read_data, &param_read);
+
+    sprintf(cmd,"ffmpeg -i pipe:%d;auto_close -vn -f s16le -ac 1 -ar 16000 pipe:%d;auto_close",pip[0],pip_out[1]);
+
+    char * trace_id = "trace_id_00998888";
+    ret = run_ffmpeg_cmd(trace_id,cmd);
+    av_log(NULL,AV_LOG_INFO,"tid=%s,task %d, ret:%d\n",trace_id,0,ret);
+//    }
+
+//    close(pip[1]);
+
+    pthread_join(pthread, NULL);
+    pthread_join(pthread_read, NULL);
+}
+
+void pip_trans_old(){
     int pip[] = {0,0};
     int ret = pipe(pip);
 
@@ -228,30 +287,30 @@ int extractAudioFromWebm(char * input,int64_t input_len,char **output,int *outpu
         return ret;
     }
 
-    ret = resample16k(memOut.data,memOut.size,&memOut.size);
-    if(ret != 0){
-        if(memOut.data){
-            free(memOut.data);
-        }
-        return ret;
-    }
-
-    memInput.data = memOut.data;
-    memInput.size = memOut.size;
-
-    memOut.data = NULL;
-    memOut.size = 0;
-    const char * opus_format = "ffmpeg -f s16le -ar 16000 -i filemem:0x%lx -c:a libopus -ar 16000 -frame_duration 20 filemem:0x%lx.opus";
-    sprintf(cmd,opus_format,ii_value,(int64_t)&memOut);
-
-    ret = run_ffmpeg_cmd("extract-trace-1000",cmd);
-    free(memInput.data);
-    if(ret != 0){
-        if(memOut.data){
-            free(memOut.data);
-        }
-        return ret;
-    }
+//    ret = resample16k(memOut.data,memOut.size,&memOut.size);
+//    if(ret != 0){
+//        if(memOut.data){
+//            free(memOut.data);
+//        }
+//        return ret;
+//    }
+//
+//    memInput.data = memOut.data;
+//    memInput.size = memOut.size;
+//
+//    memOut.data = NULL;
+//    memOut.size = 0;
+//    const char * opus_format = "ffmpeg -f s16le -ar 16000 -i filemem:0x%lx -c:a libopus -ar 16000 -frame_duration 20 filemem:0x%lx.opus";
+//    sprintf(cmd,opus_format,ii_value,(int64_t)&memOut);
+//
+//    ret = run_ffmpeg_cmd("extract-trace-1000",cmd);
+//    free(memInput.data);
+//    if(ret != 0){
+//        if(memOut.data){
+//            free(memOut.data);
+//        }
+//        return ret;
+//    }
 
     *output = memOut.data;
     *output_len = memOut.size;

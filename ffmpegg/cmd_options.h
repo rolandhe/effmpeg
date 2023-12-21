@@ -38,18 +38,18 @@ enum HWAccelID {
     HWACCEL_VIDEOTOOLBOX,
     HWACCEL_QSV,
 };
-
+typedef struct HWAccel {
+    const char *name;
+    int (*init)(void *run_context,AVCodecContext *s);
+    enum HWAccelID id;
+    enum AVPixelFormat pix_fmt;
+} HWAccel;
 typedef enum {
     ENCODER_FINISHED = 1,
     MUXER_FINISHED = 2,
 } OSTFinished ;
 
-typedef struct HWAccel {
-    const char *name;
-    int (*init)(AVCodecContext *s);
-    enum HWAccelID id;
-    enum AVPixelFormat pix_fmt;
-} HWAccel;
+
 
 
 typedef struct HWDevice {
@@ -335,6 +335,8 @@ typedef struct InputStream {
     int nb_dts_buffer;
 
     int got_output;
+
+    void * p_run_context;
 
 } InputStream;
 
@@ -622,10 +624,14 @@ typedef struct RunContext {
 #if HAVE_THREADS
     int need_input_thread;
 #endif
-
-
+#if CONFIG_QSV
+    char *qsv_device;
+    AVBufferRef *hw_device_ctx;
+#endif
 //    char * frame_rates[3];
 } RunContext;
+
+
 
 typedef struct OptionsContext {
     OptionGroup *g;

@@ -21,7 +21,7 @@
 #include <libavfilter/buffersrc.h>
 #include <libavutil/timestamp.h>
 
-static const HWAccel hwaccels[] = {
+const HWAccel hwaccels[] = {
 #if CONFIG_VIDEOTOOLBOX
         { "videotoolbox", videotoolbox_init, HWACCEL_VIDEOTOOLBOX, AV_PIX_FMT_VIDEOTOOLBOX },
 #endif
@@ -938,7 +938,7 @@ static enum AVPixelFormat get_format(AVCodecContext *s, const enum AVPixelFormat
                 continue;
             }
 
-            ret = hwaccel->init(s);
+            ret = hwaccel->init(ist->p_run_context,s);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_FATAL,
                        "%s hwaccel requested for input stream #%d:%d, "

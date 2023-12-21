@@ -102,16 +102,17 @@ static const char *const opt_name_enc_time_bases[] = {"enc_time_base", NULL};
        WARN_MULTIPLE_OPT_USAGE(name, type, so, st);\
 }
 
-const HWAccel hwaccels[] = {
-#if CONFIG_VIDEOTOOLBOX
-        { "videotoolbox", videotoolbox_init, HWACCEL_VIDEOTOOLBOX, AV_PIX_FMT_VIDEOTOOLBOX },
-#endif
-#if CONFIG_LIBMFX
-        { "qsv",   qsv_init,   HWACCEL_QSV,   AV_PIX_FMT_QSV },
-#endif
-        { 0 },
-};
+//const HWAccel hwaccels[] = {
+//#if CONFIG_VIDEOTOOLBOX
+//        { "videotoolbox", videotoolbox_init, HWACCEL_VIDEOTOOLBOX, AV_PIX_FMT_VIDEOTOOLBOX },
+//#endif
+//#if CONFIG_LIBMFX
+//        { "qsv",   qsv_init,   HWACCEL_QSV,   AV_PIX_FMT_QSV },
+//#endif
+//        { 0 },
+//};
 
+extern const HWAccel hwaccels[];
 extern  const OptionDef options[];
 
 static AVCodec *find_codec_or_die(const char *name, enum AVMediaType type, int encoder, int *error) {
@@ -176,6 +177,8 @@ static int add_input_streams(OptionsContext *o, AVFormatContext *ic)
         AVStream *st = ic->streams[i];
         AVCodecParameters *par = st->codecpar;
         InputStream *ist = av_mallocz(sizeof(*ist));
+        ist->p_run_context = o->run_context_ref;
+
         char *framerate = NULL, *hwaccel_device = NULL;
         const char *hwaccel = NULL;
         char *hwaccel_output_format = NULL;
@@ -279,9 +282,9 @@ static int add_input_streams(OptionsContext *o, AVFormatContext *ic)
                 ist->top_field_first = -1;
                 MATCH_PER_STREAM_OPT(top_field_first, i, ist->top_field_first, ic, st,fail);
 
-//                MATCH_PER_STREAM_OPT(hwaccels, str, hwaccel, ic, st,fail);
-//                MATCH_PER_STREAM_OPT(hwaccel_output_formats, str,
-//                                     hwaccel_output_format, ic, st,fail);
+                MATCH_PER_STREAM_OPT(hwaccels, str, hwaccel, ic, st,fail);
+                MATCH_PER_STREAM_OPT(hwaccel_output_formats, str,
+                                     hwaccel_output_format, ic, st,fail);
 
                 if (!hwaccel_output_format && hwaccel && !strcmp(hwaccel, "cuvid")) {
                     av_log(NULL, AV_LOG_WARNING,
@@ -309,40 +312,40 @@ static int add_input_streams(OptionsContext *o, AVFormatContext *ic)
                     else if (!strcmp(hwaccel, "auto"))
                         ist->hwaccel_id = HWACCEL_AUTO;
                     else {
-//                        enum AVHWDeviceType type;
-//                        int i;
-//                        for (i = 0; hwaccels[i].name; i++) {
-//                            if (!strcmp(hwaccels[i].name, hwaccel)) {
-//                                ist->hwaccel_id = hwaccels[i].id;
-//                                break;
-//                            }
-//                        }
-//
-//                        if (!ist->hwaccel_id) {
-//                            type = av_hwdevice_find_type_by_name(hwaccel);
-//                            if (type != AV_HWDEVICE_TYPE_NONE) {
-//                                ist->hwaccel_id = HWACCEL_GENERIC;
-//                                ist->hwaccel_device_type = type;
-//                            }
-//                        }
-//
-//                        if (!ist->hwaccel_id) {
-//                            av_log(NULL, AV_LOG_FATAL, "Unrecognized hwaccel: %s.\n",
-//                                   hwaccel);
-//                            av_log(NULL, AV_LOG_FATAL, "Supported hwaccels: ");
-//                            type = AV_HWDEVICE_TYPE_NONE;
-//                            while ((type = av_hwdevice_iterate_types(type)) !=
-//                                   AV_HWDEVICE_TYPE_NONE)
-//                                av_log(NULL, AV_LOG_FATAL, "%s ",
-//                                       av_hwdevice_get_type_name(type));
-//                            av_log(NULL, AV_LOG_FATAL, "\n");
-//                            goto fail;
-//                        }
+                        enum AVHWDeviceType type;
+                        int i;
+                        for (i = 0; hwaccels[i].name; i++) {
+                            if (!strcmp(hwaccels[i].name, hwaccel)) {
+                                ist->hwaccel_id = hwaccels[i].id;
+                                break;
+                            }
+                        }
+
+                        if (!ist->hwaccel_id) {
+                            type = av_hwdevice_find_type_by_name(hwaccel);
+                            if (type != AV_HWDEVICE_TYPE_NONE) {
+                                ist->hwaccel_id = HWACCEL_GENERIC;
+                                ist->hwaccel_device_type = type;
+                            }
+                        }
+
+                        if (!ist->hwaccel_id) {
+                            av_log(NULL, AV_LOG_FATAL, "Unrecognized hwaccel: %s.\n",
+                                   hwaccel);
+                            av_log(NULL, AV_LOG_FATAL, "Supported hwaccels: ");
+                            type = AV_HWDEVICE_TYPE_NONE;
+                            while ((type = av_hwdevice_iterate_types(type)) !=
+                                   AV_HWDEVICE_TYPE_NONE)
+                                av_log(NULL, AV_LOG_FATAL, "%s ",
+                                       av_hwdevice_get_type_name(type));
+                            av_log(NULL, AV_LOG_FATAL, "\n");
+                            goto fail;
+                        }
                         av_log(NULL, AV_LOG_ERROR, "tid=%s,don't Supported hwaccels ",trace_id);
                     }
                 }
 
-//                MATCH_PER_STREAM_OPT(hwaccel_devices, str, hwaccel_device, ic, st,fail);
+                MATCH_PER_STREAM_OPT(hwaccel_devices, str, hwaccel_device, ic, st,fail);
                 if (hwaccel_device) {
                     ist->hwaccel_device = av_strdup(hwaccel_device);
                     if (!ist->hwaccel_device)
