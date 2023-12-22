@@ -175,7 +175,7 @@ int main() {
 
 void pip_trans(){
     int pip[] = {0,0};
-    int ret = pipe2(pip);
+    int ret = pipe(pip);
 
 
     char cmd[2048] = {0};
